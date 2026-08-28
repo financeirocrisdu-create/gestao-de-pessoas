@@ -310,6 +310,196 @@ async function apiRequest(action, data = {}) {
   return resultado;
 }
 
+// =====================================================
+// SINCRONIZAÇÃO CENTRAL COM O SERVIDOR
+// =====================================================
+const SERVER_SYNC_EXACT_KEYS = new Set([
+  'crisdu_employee_state',
+  'crisdu_important_notices',
+  'crisdu_demand_log',
+  'crisdu_live_notifs',
+  'crisdu_custom_tasks',
+  'crisdu_solicitacoes',
+  'crisdu_politicas_v3',
+  'crisdu_politicas_historico_v3',
+  'crisdu_employee_profiles',
+  'crisdu_employee_task_onboarding',
+  'crisdu_added_users',
+  'crisdu_added_team_map',
+  'crisdu_management_events',
+  'crisdu_pdis',
+  'crisdu_salary_proposals_v3',
+  'crisdu_job_requests_v3',
+  'crisdu_evaluations',
+  'crisdu_feedbacks',
+  'crisdu_people_date_notifs',
+  'crisdu_user_access'
+]);
+
+function isServerSyncKey(key){
+  key=String(key||'');
+  return SERVER_SYNC_EXACT_KEYS.has(key)||key.startsWith('crisdu_photo_');
+}
+
+const __storageSetItem=Storage.prototype.setItem;
+const __storageRemoveItem=Storage.prototype.removeItem;
+const __storageClear=Storage.prototype.clear;
+let __applyingServerData=false;
+let __serverPendingSets={};
+let __serverPendingRemoves=new Set();
+let __serverSyncTimer=null;
+let __serverSyncInFlight=false;
+
+function rawLocalSet(key,value){
+  __storageSetItem.call(localStorage,String(key),String(value));
+}
+function rawLocalRemove(key){
+  __storageRemoveItem.call(localStorage,String(key));
+}
+
+function queueServerSet(key,value){
+  if(__applyingServerData||!isServerSyncKey(key)||!sessionStorage.getItem('crisdu_api_token'))return;
+  __serverPendingSets[String(key)]=String(value);
+  __serverPendingRemoves.delete(String(key));
+  scheduleServerFlush();
+}
+function queueServerRemove(key){
+  if(__applyingServerData||!isServerSyncKey(key)||!sessionStorage.getItem('crisdu_api_token'))return;
+  delete __serverPendingSets[String(key)];
+  __serverPendingRemoves.add(String(key));
+  scheduleServerFlush();
+}
+function scheduleServerFlush(){
+  clearTimeout(__serverSyncTimer);
+  __serverSyncTimer=setTimeout(flushServerSync,500);
+}
+
+Storage.prototype.setItem=function(key,value){
+  const out=__storageSetItem.call(this,key,value);
+  if(this===localStorage)queueServerSet(key,value);
+  return out;
+};
+Storage.prototype.removeItem=function(key){
+  const out=__storageRemoveItem.call(this,key);
+  if(this===localStorage)queueServerRemove(key);
+  return out;
+};
+Storage.prototype.clear=function(){
+  if(this!==localStorage)return __storageClear.call(this);
+  const before=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);if(isServerSyncKey(k))before.push(k);
+  }
+  const out=__storageClear.call(this);
+  before.forEach(queueServerRemove);
+  return out;
+};
+
+async function flushServerSync(){
+  if(__serverSyncInFlight||!sessionStorage.getItem('crisdu_api_token'))return;
+  const sets={...__serverPendingSets};
+  const removes=[...__serverPendingRemoves];
+  if(!Object.keys(sets).length&&!removes.length)return;
+  __serverPendingSets={};
+  __serverPendingRemoves.clear();
+  __serverSyncInFlight=true;
+  try{
+    const r=await apiRequest('batch',{sets,removes});
+    if(r.version!=null)sessionStorage.setItem('crisdu_server_version',String(r.version));
+    sessionStorage.setItem('crisdu_last_server_sync',new Date().toISOString());
+  }catch(err){
+    console.error('Falha ao sincronizar com o servidor:',err);
+    Object.assign(__serverPendingSets,sets);
+    removes.forEach(k=>__serverPendingRemoves.add(k));
+    clearTimeout(__serverSyncTimer);
+    __serverSyncTimer=setTimeout(flushServerSync,3000);
+  }finally{
+    __serverSyncInFlight=false;
+  }
+}
+
+function collectSyncLocalData(){
+  const out={};
+  for(let i=0;i<localStorage.length;i++){
+    const key=localStorage.key(i);
+    if(isServerSyncKey(key))out[key]=localStorage.getItem(key)||'';
+  }
+  return out;
+}
+
+function applyServerData(data){
+  data=data&&typeof data==='object'?data:{};
+  let changed=false;
+  __applyingServerData=true;
+  try{
+    const localKeys=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);if(isServerSyncKey(k))localKeys.push(k);
+    }
+    localKeys.forEach(k=>{
+      if(!Object.prototype.hasOwnProperty.call(data,k)){
+        rawLocalRemove(k);changed=true;
+      }
+    });
+    Object.keys(data).forEach(k=>{
+      if(!isServerSyncKey(k))return;
+      const next=String(data[k]??'');
+      if(localStorage.getItem(k)!==next){rawLocalSet(k,next);changed=true;}
+    });
+  }finally{
+    __applyingServerData=false;
+  }
+  return changed;
+}
+
+async function prepareServerDataAfterLogin(userKey){
+  const r=await apiRequest('all');
+  const remote=r.data&&typeof r.data==='object'?r.data:{};
+  if(r.version!=null)sessionStorage.setItem('crisdu_server_version',String(r.version));
+
+  if(Object.keys(remote).length===0){
+    // Primeira migração: se o servidor estiver vazio, o navegador que já possui
+    // a base do sistema envia seus dados atuais para formar a base central.
+    const local=collectSyncLocalData();
+    if(Object.keys(local).length){
+      const saved=await apiRequest('batch',{sets:local,removes:[]});
+      if(saved.version!=null)sessionStorage.setItem('crisdu_server_version',String(saved.version));
+    }
+  }else{
+    // Depois da migração, o servidor passa a ser a fonte central.
+    applyServerData(remote);
+  }
+
+  sessionStorage.setItem('crisdu_session_user',userKey);
+  sessionStorage.setItem('crisdu_server_ready','1');
+  location.reload();
+}
+
+async function restoreServerSession(){
+  const token=sessionStorage.getItem('crisdu_api_token')||'';
+  const userKey=sessionStorage.getItem('crisdu_session_user')||'';
+  if(!token||!userKey)return;
+  try{
+    const r=await apiRequest('all');
+    const remote=r.data&&typeof r.data==='object'?r.data:{};
+    if(r.version!=null)sessionStorage.setItem('crisdu_server_version',String(r.version));
+    const changed=Object.keys(remote).length?applyServerData(remote):false;
+    if(changed&&sessionStorage.getItem('crisdu_server_hydrated_reload')!=='1'){
+      sessionStorage.setItem('crisdu_server_hydrated_reload','1');
+      location.reload();
+      return;
+    }
+    sessionStorage.removeItem('crisdu_server_hydrated_reload');
+    switchProfile(userKey);
+  }catch(err){
+    console.error('Sessão do servidor indisponível:',err);
+    sessionStorage.removeItem('crisdu_api_token');
+    sessionStorage.removeItem('crisdu_session_user');
+    sessionStorage.removeItem('crisdu_server_ready');
+    renderLogin();
+  }
+}
+
 // ─── STATE ───
 let CP = '', CV = '';
 const CARGOS_TESOURARIA = [{"cargo": "Analista de Tesouraria (Operações)", "tarefas": ["Administrar as rotinas de Tesouraria do grupo de empresas sob sua responsabilidade, assegurando execução padronizada, cumprimento de prazos e aderência às políticas corporativas.", "Certificar diariamente os saldos bancários e atualizar o FinSight até 9h00, mantendo a posição diária de caixa, disponibilidades e fluxo de caixa das empresas atendidas.", "Agendar pagamentos D+1 antes do vencimento das empresas sob sua responsabilidade, somente mediante lançamento correto e aprovação no sistema, respeitando alçadas e segregação de funções.", "Conferir pagamentos efetivados e comprovantes, validando valores, favorecidos, datas, bancos e registros no sistema financeiro.", "Tratar rejeições, devoluções, retornos e demais pendências bancárias, acompanhando a regularização até a efetivação e mantendo evidências do tratamento realizado.", "Elaborar e revisar semanalmente o fluxo de caixa, a posição bancária e o relatório de contas e saldos das empresas atendidas, comparando realizado versus previsto e justificando desvios relevantes.", "Antecipar pendências bancárias, pagamentos e baixas da semana seguinte, coordenando as regularizações necessárias para evitar atrasos, bloqueios, encargos ou interrupções.", "Validar movimentações entre empresas (intercompany), observando autorizações, finalidade, documentação de suporte, disponibilidade financeira e regras societárias aplicáveis.", "Executar e apoiar os fechamentos financeiro e bancário diário, semanal e mensal, incluindo conciliações bancárias e contas transitórias e o tratamento das divergências dentro do período.", "Manter atualizada a posição de fornecedores, financiamentos, extratos e demais compromissos financeiros das empresas atendidas, garantindo organização e qualidade das informações.", "Disponibilizar à Contabilidade e aos controles internos comprovantes, extratos, saldos e relatórios extraídos da plataforma financeira integrada ao sistema, preservando rastreabilidade e evidências.", "Emitir a posição financeira consolidada do grupo de empresas sob sua responsabilidade, contemplando caixa, aplicações, financiamentos, compromissos, pendências e disponibilidade financeira.", "Padronizar controles operacionais e atuar em conjunto com o outro Analista de Tesouraria para garantir uniformidade de processos, cobertura das rotinas e continuidade operacional entre os grupos de empresas.", "Cumprir políticas de Tesouraria, confidencialidade, acessos bancários, alçadas e segregação de funções, sem compartilhar senhas, acessos ou autorizações e reportando exceções e riscos identificados."]}, {"cargo": "Analista de Tesouraria (Estratégico)", "tarefas": ["Monitorar diariamente a carteira de investimentos, acompanhando rentabilidade, liquidez, vencimentos, limites e aderencia a politica financeira.", "Monitorar financiamentos e operacoes de cambio, acompanhando cronogramas, taxas, encargos, garantias, covenants e exposicoes financeiras.", "Atualizar indicadores e dashboards de Tesouraria, assegurando qualidade dos dados e visibilidade para a gestao.", "Acompanhar a liquidez consolidada e avaliar alternativas de aplicacao dos excedentes de caixa, considerando risco, prazo, rentabilidade e necessidade operacional.", "Apoiar decisoes estrategicas por meio de analises de caixa, endividamento, investimentos, cambio e estrutura bancaria.", "Elaborar estudos, relatorios executivos e indicadores, destacando liquidez, custo financeiro, investimentos e riscos.", "Revisar mensalmente a carteira de investimentos, financiamentos, contratos financeiros, vencimentos e condicoes negociadas.", "Avaliar oportunidades de captacao, renegociacao, aplicacao e otimizacao da estrutura de capital e do custo financeiro.", "Revisar periodicamente a politica financeira, limites bancarios, alçadas e controles de Tesouraria, propondo melhorias de governanca e segregacao de funcoes.", "Apoiar negociacoes com instituicoes financeiras sobre taxas, tarifas, linhas de credito, garantias e condicoes comerciais.", "Desenvolver novos indicadores e evoluir modulos do FinSight e demais ferramentas de Tesouraria, promovendo automacao e integracao de dados.", "Controlar e apoiar o envio de documentos aos bancos para cadastros e limites atualizados"]}, {"cargo": "Assistente de Tesouraria", "tarefas": ["Apoiar a execução das rotinas de Tesouraria das empresas sob sua responsabilidade, cumprindo prazos, procedimentos e controles definidos pela área.", "Atualizar diariamente saldos bancários, posição de caixa e informações no FinSight, garantindo consistência entre extratos e sistema financeiro.", "Preparar e conferir os dados necessários aos agendamentos de pagamentos, assegurando que documentos, lançamentos e aprovações estejam completos antes do envio ao Analista.", "Acompanhar pagamentos efetivados, emitir e organizar comprovantes e sinalizar imediatamente divergências de valor, favorecido, data ou conta bancária.", "Acompanhar rejeições, devoluções e retornos bancários, levantando evidências e apoiando o tratamento das pendências até a regularização.", "Apoiar a elaboração do fluxo de caixa diário e semanal, consolidando previsões de entradas, saídas, saldos e compromissos das empresas atendidas.", "Atualizar controles de fornecedores, financiamentos, tarifas, aplicações, extratos e demais compromissos financeiros, mantendo dados e documentos organizados.", "Apoiar movimentações entre empresas (intercompany), conferindo documentação de suporte, dados bancários, autorizações e registros necessários.", "Apoiar conciliações bancárias e o fechamento financeiro diário, semanal e mensal, identificando diferenças e encaminhando-as para análise e correção.", "Disponibilizar comprovantes, extratos, saldos e relatórios para Contabilidade, controles internos e demais áreas autorizadas, preservando rastreabilidade documental.", "Acompanhar pendências de pagamentos e baixas da carteira de empresas atendida, sinalizando riscos de atraso, bloqueio, encargos ou interrupção de serviços.", "Cumprir as políticas de Tesouraria, confidencialidade, acessos bancários, alçadas e segregação de funções, reportando qualquer inconsistência ou exceção identificada."]}, {"cargo": "Auxiliar de Tesouraria", "tarefas": ["Apoiar as rotinas operacionais de Tesouraria das empresas sob sua responsabilidade, seguindo procedimentos, prazos e orientações do Assistente e dos Analistas.", "Consultar e organizar extratos e saldos bancários, apoiando a atualização da posição diária de caixa e dos controles internos da Tesouraria.", "Apoiar a atualização do FinSight e de planilhas de controle, inserindo informações previamente conferidas e mantendo os registros organizados.", "Separar e conferir documentos de pagamentos, verificando dados básicos como empresa, fornecedor, vencimento, valor, banco e existência do lançamento no sistema.", "Apoiar a preparação dos pagamentos para conferência do Assistente ou Analista, sem realizar liberações bancárias e respeitando integralmente a segregação de funções.", "Emitir, salvar e organizar comprovantes de pagamentos efetivados, mantendo a documentação disponível para consulta e auditoria.", "Acompanhar retornos e pendências bancárias simples, sinalizando rejeições, devoluções ou inconsistências para tratamento pelo Assistente ou Analista.", "Apoiar a conciliação bancária mediante comparação de extratos, comprovantes e registros do sistema, destacando diferenças encontradas.", "Organizar documentos de fornecedores, financiamentos, extratos e demais informações financeiras necessárias aos fechamentos e controles da área.", "Atender solicitações operacionais internas relacionadas a comprovantes e informações financeiras, observando os níveis de acesso e confidencialidade.", "Cumprir os procedimentos de Tesouraria e as regras de segurança da informação, não compartilhando senhas, acessos bancários ou dados financeiros restritos."]}];
@@ -781,7 +971,13 @@ function dispatch(p,v){
 }
 
 function logout(){
-  // Encerra somente a sessão atual; os dados persistentes da plataforma permanecem salvos.
+  // Encerra a sessão local e também invalida a sessão no servidor.
+  const __token=sessionStorage.getItem('crisdu_api_token')||'';
+  if(__token){apiRequest('logout').catch(()=>{});}
+  sessionStorage.removeItem('crisdu_api_token');
+  sessionStorage.removeItem('crisdu_server_ready');
+  sessionStorage.removeItem('crisdu_server_version');
+  // Os dados persistentes da plataforma permanecem salvos no servidor.
   CURRENT_USER='';
   CP='';
   CV='';
@@ -843,15 +1039,29 @@ function loginMap(){
 function authState(){try{return JSON.parse(localStorage.getItem('crisdu_auth_state')||'{}')||{};}catch(e){return {};}}
 function saveAuthState(v){try{localStorage.setItem('crisdu_auth_state',JSON.stringify(v||{}));}catch(e){}}
 function randomRecoveryPassword(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let out='CRISDU-';for(let i=0;i<6;i++)out+=chars[Math.floor(Math.random()*chars.length)];return out;}
-function tryLogin(){
+async function tryLogin(){
   const u=document.getElementById('lu').value.trim().toLowerCase(),p=document.getElementById('lp').value,el=document.getElementById('lerr');
   if(!u||!p){el.innerHTML='<div class="err-msg"><i class="fa-solid fa-circle-xmark"></i>Preencha usuário e senha</div>';return;}
-  const key=loginMap()[u];
-  if(!key){el.innerHTML='<div style="background:var(--red-l);border:1px solid var(--red-m);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--red);display:flex;gap:8px"><i class="fa-solid fa-circle-exclamation" style="flex-shrink:0;margin-top:1px"></i><div>Usuário não cadastrado nesta versão da plataforma.</div></div>';return;}
-  const auth=authState(),rec=auth[key];
-  if(rec&&rec.password&&p!==rec.password){el.innerHTML='<div class="err-msg"><i class="fa-solid fa-circle-xmark"></i>Senha incorreta.</div>';return;}
-  if(rec&&rec.forceReset){try{sessionStorage.setItem('crisdu_password_reset_user',key);}catch(e){} renderPrimeiro();return;}
-  const sel=document.getElementById('profile-sel');if(sel)sel.value=key;switchProfile(key);
+  const btn=document.querySelector('[onclick="tryLogin()"]');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Entrando...';}
+  try{
+    const r=await apiRequest('login',{username:u,password:p});
+    sessionStorage.setItem('crisdu_api_token',r.token);
+    sessionStorage.setItem('crisdu_session_user',r.userKey);
+    sessionStorage.setItem('crisdu_server_role',r.role||'');
+    if(r.forceReset){
+      sessionStorage.setItem('crisdu_password_reset_user',r.userKey);
+      renderPrimeiro();
+      return;
+    }
+    await prepareServerDataAfterLogin(r.userKey);
+  }catch(err){
+    sessionStorage.removeItem('crisdu_api_token');
+    sessionStorage.removeItem('crisdu_session_user');
+    el.innerHTML=`<div class="err-msg"><i class="fa-solid fa-circle-xmark"></i>${String(err.message||err)}</div>`;
+  }finally{
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-right-to-bracket"></i> Entrar';}
+  }
 }
 function showRecuperar(){
   mc().innerHTML=`<div class="login-page"><div class="login-box" style="max-width:390px;width:390px">
@@ -900,14 +1110,23 @@ function renderPrimeiro(){
 }
 function chkStr(){const v=document.getElementById('pn').value,ok=window._rqs.filter(r=>r.f(v)).length;window._rqs.forEach(r=>{const el=document.getElementById(r.id);if(!el)return;const p=r.f(v);el.style.color=p?'var(--green)':'var(--text3)';el.innerHTML=`<i class="fa-${p?'solid fa-check':'regular fa-circle'}" style="font-size:11px"></i>${r.t}`;});const bar=document.getElementById('pbar'),lbl=document.getElementById('plbl');if(!bar||!lbl)return;bar.style.width=[0,20,40,60,80,100][ok]+'%';bar.style.background=['#E24B4A','#E24B4A','#EF9F27','#EF9F27','#3B6D11','#3B6D11'][ok];lbl.textContent=ok>0?'Força: '+['','Muito fraca','Fraca','Média','Boa','Forte'][ok]:'';}
 function chkMatch(){const a=document.getElementById('pn').value,b=document.getElementById('pc2').value,el=document.getElementById('pcm2');if(!b)return;el.innerHTML=a===b?'<div class="ok-msg"><i class="fa-solid fa-check"></i>Senhas conferem</div>':'<div class="err-msg"><i class="fa-solid fa-xmark"></i>Senhas não conferem</div>';}
-function saveSenha(){
+async function saveSenha(){
   const a=document.getElementById('pn')?.value||'',b=document.getElementById('pc2')?.value||'',out=document.getElementById('pok2');
   const ok=window._rqs&&window._rqs.every(r=>r.f(a));
   if(!ok||a!==b){out.innerHTML='<div class="err-msg" style="margin-top:12px"><i class="fa-solid fa-circle-xmark"></i>Revise os requisitos e a confirmação da senha.</div>';return;}
   let rk='';try{rk=sessionStorage.getItem('crisdu_password_reset_user')||'';}catch(e){}
-  if(rk){const auth=authState();auth[rk]={...(auth[rk]||{}),password:a,forceReset:false,passwordChangedAt:new Date().toISOString()};saveAuthState(auth);try{sessionStorage.removeItem('crisdu_password_reset_user');}catch(e){}}
-  out.innerHTML='<div class="sb" style="margin-top:12px"><i class="fa-solid fa-check"></i>Senha permanente cadastrada! Redirecionando para o login…</div>';
-  setTimeout(()=>{const sel=document.getElementById('profile-sel');if(sel)sel.value='login';switchProfile('login');},1100);
+  try{
+    if(sessionStorage.getItem('crisdu_api_token')){
+      await apiRequest('changePassword',{newPassword:a});
+    }else if(rk){
+      const auth=authState();auth[rk]={...(auth[rk]||{}),password:a,forceReset:false,passwordChangedAt:new Date().toISOString()};saveAuthState(auth);
+    }
+    sessionStorage.removeItem('crisdu_password_reset_user');
+    out.innerHTML='<div class="sb" style="margin-top:12px"><i class="fa-solid fa-check"></i>Senha permanente cadastrada com sucesso.</div>';
+    setTimeout(()=>prepareServerDataAfterLogin(rk||sessionStorage.getItem('crisdu_session_user')||''),700);
+  }catch(err){
+    out.innerHTML=`<div class="err-msg" style="margin-top:12px"><i class="fa-solid fa-circle-xmark"></i>${String(err.message||err)}</div>`;
+  }
 }
 
 // ─── DATAS IMPORTANTES E FÉRIAS ───
@@ -1922,7 +2141,7 @@ function brev(){
   if(ra)ra.innerHTML=[['Login',gv('clog')],['Perfil',gv('cperfil')],['Status','Aguardando 1º acesso'],['Senha provisória',gv('ctemp-pass')],['Primeiro acesso','Troca de senha obrigatória'],['Tarefas',employeeTaskModeLabel()]].map(([l,v])=>rv(l,v)).join('');
   const imp=document.getElementById('import-review-info'); const meta=JSON.parse(sessionStorage.getItem('crisdu_employee_import_meta')||'null'); if(imp&&meta)imp.innerHTML=`<div class="tb"><i class="fa-solid fa-file-arrow-up"></i><div><strong>Origem do cadastro:</strong> ${esc(meta.fileName)} · importado por ${esc(meta.importedBy)} em ${esc(meta.importedAt)} · ${meta.fields?.length||0} campo(s) aplicados automaticamente/na revisão.</div></div>`;
 }
-function saveColab(){
+async function saveColab(){
   const nm=(gv('cn')||'').trim(); if(!nm||nm==='—'){alert('Informe o nome do colaborador.');return;}
   const cargo=gv('ccargo')==='—'?'Colaborador':gv('ccargo'); const me=USERS[CURRENT_USER]||{};
   const leaderName=(gv('clider')||'').trim();
@@ -1941,6 +2160,14 @@ function saveColab(){
   localStorage.setItem('crisdu_employee_profiles',JSON.stringify(profiles));
 
   const provisional=gv('ctemp-pass')==='—'?generateTempPassword():gv('ctemp-pass');
+  try{
+    if(sessionStorage.getItem('crisdu_api_token')){
+      await apiRequest('createUser',{username:gv('clog'),userKey:key,role:'colab',tempPassword:provisional});
+    }
+  }catch(err){
+    console.error('Falha ao criar acesso no servidor:',err);
+    alert('O cadastro do colaborador será salvo, mas o acesso ao servidor não pôde ser criado: '+String(err.message||err));
+  }
   const accessMap=JSON.parse(localStorage.getItem('crisdu_user_access')||'{}');
   accessMap[key]={login:gv('clog'),provisionalPassword:provisional,firstAccessRequired:true,status:'Aguardando primeiro acesso',createdAt:new Date().toLocaleString('pt-BR')};
   localStorage.setItem('crisdu_user_access',JSON.stringify(accessMap));
@@ -2616,6 +2843,9 @@ function normalizeTaskRecurrenceRules(){
 }
 normalizeTaskRecurrenceRules();
 ensureRecurringOccurrences();
+
+// Se a aba já possui uma sessão autenticada, busca a base central antes de continuar.
+setTimeout(()=>{restoreServerSession();},0);
 </script>
 </body>
 </html>

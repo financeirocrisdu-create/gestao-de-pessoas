@@ -222,6 +222,27 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0}
 .notification-high{background:#fffaf1;border-left:4px solid var(--amber)}
 .kpi-live{position:relative}.kpi-live:after{content:'ao vivo';position:absolute;right:10px;top:9px;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--teal);font-weight:700}
 
+
+/* ===== SERVIDOR, SINCRONIZAÇÃO E NOTIFICAÇÕES ===== */
+.sync-status-pill{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:999px;background:#fff;font-size:10.5px;font-weight:700;color:var(--text2);white-space:nowrap;transition:.2s;cursor:default}
+.sync-status-pill[data-state="online"]{background:#F2FBF7;border-color:#B7E3CF;color:#0F6E56}
+.sync-status-pill[data-state="syncing"]{background:#F3F7FC;border-color:#B8D3EA;color:#0B4F8A}
+.sync-status-pill[data-state="error"]{background:#FFF5F5;border-color:#F2B8B8;color:#A32D2D}
+.sync-status-pill[data-state="offline"]{background:#FAFAFA;color:#6B7280}
+.sync-status-dot{width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 0 3px rgba(15,110,86,.08)}
+.sync-status-pill[data-state="syncing"] .sync-status-dot{animation:syncPulse 1s infinite}
+@keyframes syncPulse{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
+.server-hero{border:1px solid #CFE0EF;background:linear-gradient(135deg,#F8FBFE 0%,#EEF6FC 100%);border-radius:16px;padding:18px;margin-bottom:14px}
+.server-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(220px,.7fr);gap:14px;align-items:stretch}
+.server-url-box{display:flex;gap:8px;align-items:center}.server-url-box input{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px}
+.server-status-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+.server-status-line{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700}.server-status-light{width:10px;height:10px;border-radius:50%;background:#9CA3AF}.server-status-light.ok{background:#1F9D68;box-shadow:0 0 0 4px #E4F6EE}.server-status-light.err{background:#D14343;box-shadow:0 0 0 4px #FCEAEA}.server-status-light.wait{background:#2D6FA3;box-shadow:0 0 0 4px #E7F1F8}
+.diag-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.diag-item{border:1px solid var(--border);border-radius:10px;padding:11px;background:#fff}.diag-k{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:700}.diag-v{font-size:12px;color:var(--text);font-weight:700;margin-top:4px;word-break:break-word}
+.notif-tools{display:flex;align-items:center;gap:8px}.notif-link{border:0;background:transparent;color:var(--blue);font-size:10.5px;font-weight:700;cursor:pointer;padding:3px 4px}.notif-item.unread{background:#F7FBFF}.notif-item.read{opacity:.68}.notif-unread-mark{width:7px;height:7px;border-radius:50%;background:var(--blue);flex-shrink:0;margin-top:5px}.notif-empty{padding:24px 14px;text-align:center;color:var(--text3);font-size:11.5px}
+.upcoming-card{border:1px dashed #B8D3EA;background:#FAFCFE;border-radius:12px;padding:12px 14px;margin-bottom:8px}.upcoming-card .upcoming-title{font-size:12px;font-weight:700;color:var(--text)}
+.server-login-link{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--text3);font-size:10.5px;cursor:pointer;margin-top:10px}.server-login-link:hover{color:var(--blue)}
+@media(max-width:980px){.server-grid{grid-template-columns:1fr}.diag-grid{grid-template-columns:repeat(2,1fr)}.sync-status-pill{display:none}}
+
 </style>
 </head>
 <body>
@@ -237,6 +258,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0}
       </div>
       <div id="global-search-mini" style="display:none;position:absolute;right:0;top:34px;width:380px;max-height:360px;overflow:auto;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);z-index:1300"></div>
     </div>
+    <div class="sync-status-pill" id="sync-status-pill" data-state="offline" title="Status da sincronização com o servidor"><span class="sync-status-dot"></span><span id="sync-status-text">Servidor</span></div>
     <button class="notif-btn" onclick="toggleNotif()" title="Notificações">
       <i class="fa-solid fa-bell" style="font-size:13px"></i>
       <div class="notif-dot" id="notif-dot"></div>
@@ -268,7 +290,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- NOTIFICATION PANEL -->
 <div class="notif-panel" id="notif-panel">
-  <div class="notif-header">Notificações <span style="font-size:11px;color:var(--text3);font-weight:400;cursor:pointer" onclick="document.getElementById('notif-panel').style.display='none'">Fechar</span></div>
+  <div class="notif-header"><div>Notificações <span id="notif-unread-count" class="badge b-blue" style="margin-left:5px;display:none"></span></div><div class="notif-tools"><button class="notif-link" onclick="markAllNotificationsRead()">Marcar lidas</button><button class="notif-link" onclick="document.getElementById('notif-panel').style.display='none'">Fechar</button></div></div>
   <div id="notif-list"></div>
 </div>
 
@@ -281,245 +303,192 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0}
 <script>
 
 // =====================================================
-// CONEXÃO COM O GOOGLE APPS SCRIPT
+// SERVIDOR E SINCRONIZAÇÃO CENTRAL — V4
 // =====================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbzXEFTcaUYvYhs8E1m6VRUUUire4VwxB12wQQ3-CYho8mtn7jWMBWduFWTHZK5PVeJv/exec';
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbzXEFTcaUYvYhs8E1m6VRUUUire4VwxB12wQQ3-CYho8mtn7jWMBWduFWTHZK5PVeJv/exec';
+const API_URL_STORAGE_KEY = 'crisdu_api_url';
 
-async function apiRequest(action, data = {}) {
-  const token = sessionStorage.getItem('crisdu_api_token') || '';
-
-  const resposta = await fetch(API_URL, {
-    method: 'POST',
-    redirect: 'follow',
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8'
-    },
-    body: JSON.stringify({
-      action: action,
-      token: token,
-      ...data
-    })
-  });
-
-  const resultado = await resposta.json();
-
-  if (!resultado.ok) {
-    throw new Error(resultado.error || 'Erro de comunicação com o servidor.');
-  }
-
-  return resultado;
+function normalizeApiUrl(value){
+  const v=String(value||'').trim();
+  if(!v)return '';
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/i.test(v))return v;
+  return v;
 }
+function getApiUrl(){return normalizeApiUrl(localStorage.getItem(API_URL_STORAGE_KEY)||DEFAULT_API_URL);}
+function apiHostLabel(){try{return new URL(getApiUrl()).hostname}catch(e){return 'Servidor não configurado'}}
+
+let __syncUiState={state:'offline',text:'Servidor',detail:'',lastOk:''};
+function setSyncStatus(state,text,detail=''){
+  __syncUiState={state:state||'offline',text:text||'Servidor',detail:detail||'',lastOk:state==='online'?new Date().toISOString():(__syncUiState.lastOk||'')};
+  updateSyncStatusUI();
+}
+function updateSyncStatusUI(){
+  const pill=document.getElementById('sync-status-pill'),txt=document.getElementById('sync-status-text');
+  if(pill){pill.dataset.state=__syncUiState.state||'offline';pill.title=__syncUiState.detail||'Status da sincronização com o servidor';}
+  if(txt)txt.textContent=__syncUiState.text||'Servidor';
+  const st=document.getElementById('cfg-server-state'),light=document.getElementById('cfg-server-light'),detail=document.getElementById('cfg-server-detail');
+  if(st)st.textContent=__syncUiState.text||'Não testado';
+  if(light){light.className='server-status-light '+(__syncUiState.state==='online'?'ok':__syncUiState.state==='error'?'err':'wait');}
+  if(detail)detail.textContent=__syncUiState.detail||'Aguardando teste de conexão.';
+  renderSyncDiagnostics();
+}
+
+async function apiRequest(action,data={},options={}){
+  const url=normalizeApiUrl(options.url||getApiUrl());
+  if(!url)throw new Error('Servidor não configurado. Informe o link /exec nas Configurações.');
+  const token=sessionStorage.getItem('crisdu_api_token')||'';
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),Number(options.timeout||25000));
+  if(!options.silent)setSyncStatus('syncing','Sincronizando…','Comunicando com '+apiHostLabel());
+  try{
+    const resposta=await fetch(url,{method:'POST',redirect:'follow',cache:'no-store',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,token,...data}),signal:controller.signal});
+    const raw=await resposta.text();
+    let resultado;
+    try{resultado=JSON.parse(raw)}catch(e){throw new Error('O servidor respondeu em formato inválido. Confirme se o link termina em /exec e se a implantação está ativa.');}
+    if(!resultado.ok)throw new Error(resultado.error||'Erro de comunicação com o servidor.');
+    if(!options.silent)setSyncStatus('online','Sincronizado','Servidor respondeu corretamente.');
+    return resultado;
+  }catch(err){
+    const msg=err&&err.name==='AbortError'?'Tempo de resposta do servidor excedido.':String(err.message||err);
+    if(!options.silent)setSyncStatus('error','Falha de sync',msg);
+    throw new Error(msg);
+  }finally{clearTimeout(timer);}
+}
+
+async function testServerConnection(urlOverride=''){
+  const url=normalizeApiUrl(urlOverride||getApiUrl());
+  if(!url)throw new Error('Informe o link /exec do Google Apps Script.');
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/i.test(url))throw new Error('O endereço precisa ser um link de implantação do Apps Script terminado em /exec.');
+  setSyncStatus('syncing','Testando…','Validando o servidor informado.');
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
+  try{
+    const r=await fetch(url,{method:'POST',redirect:'follow',cache:'no-store',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'health'}),signal:controller.signal});
+    const raw=await r.text();let obj;
+    try{obj=JSON.parse(raw)}catch(e){throw new Error('O link abriu, mas não retornou JSON. Verifique se foi implantado como Aplicativo da Web.');}
+    if(!obj.ok)throw new Error(obj.error||'Servidor respondeu com erro.');
+    setSyncStatus('online','Servidor online',`Conexão válida · versão ${obj.version??0}`);
+    return obj;
+  }catch(err){const msg=err&&err.name==='AbortError'?'O servidor demorou mais de 20 segundos para responder.':String(err.message||err);setSyncStatus('error','Servidor indisponível',msg);throw new Error(msg)}finally{clearTimeout(timer)}
+}
+
+async function testServerFromConfig(){
+  const input=document.getElementById('cfg-api-url'),out=document.getElementById('cfg-server-test-result');
+  const url=normalizeApiUrl(input?.value||'');
+  if(out)out.innerHTML='<div class="ib"><i class="fa-solid fa-spinner fa-spin"></i><div>Testando conexão com o Apps Script…</div></div>';
+  try{const r=await testServerConnection(url);if(out)out.innerHTML=`<div class="sb"><i class="fa-solid fa-circle-check"></i><div><strong>Conexão aprovada.</strong> Backend online · versão ${r.version??0}. Agora você pode salvar este link.</div></div>`;}catch(err){if(out)out.innerHTML=`<div class="rb"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Falha no teste.</strong> ${esc(String(err.message||err))}</div></div>`;}
+  updateSyncStatusUI();
+}
+function saveServerUrlFromConfig(){
+  const input=document.getElementById('cfg-api-url'),out=document.getElementById('cfg-server-test-result');
+  const url=normalizeApiUrl(input?.value||'');
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/i.test(url)){if(out)out.innerHTML='<div class="rb"><i class="fa-solid fa-circle-exclamation"></i><div>Informe um link válido do Apps Script terminado em <strong>/exec</strong>.</div></div>';return;}
+  localStorage.setItem(API_URL_STORAGE_KEY,url);
+  sessionStorage.removeItem('crisdu_api_token');sessionStorage.removeItem('crisdu_session_user');sessionStorage.removeItem('crisdu_server_ready');sessionStorage.removeItem('crisdu_server_version');
+  stopServerPolling();
+  if(out)out.innerHTML='<div class="sb"><i class="fa-solid fa-check"></i><div><strong>Link salvo.</strong> Por segurança, a sessão foi encerrada. Entre novamente para autenticar no novo servidor.</div></div>';
+  setSyncStatus('offline','Novo servidor','Link salvo; novo login necessário.');
+  setTimeout(()=>logout(),1100);
+}
+function openServerConnectionModal(){
+  const id='server-connection-modal';document.getElementById(id)?.remove();const w=document.createElement('div');w.id=id;w.className='modal-backdrop';
+  w.innerHTML=`<div class="modal-card" style="max-width:720px"><div class="page-title">Conexão com o servidor</div><div class="page-sub">Informe o link /exec da implantação do Google Apps Script</div><div class="ib" style="margin-top:14px"><i class="fa-solid fa-shield-halved"></i><div>O endereço fica salvo somente neste navegador. O sistema usa o servidor como fonte central dos dados.</div></div><div class="fw" style="margin:14px 0"><div class="fl">Link /exec</div><input id="server-modal-url" value="${esc(getApiUrl())}" placeholder="https://script.google.com/macros/s/.../exec"></div><div id="server-modal-result"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn" onclick="document.getElementById('${id}').remove()">Cancelar</button><button class="btn" onclick="testServerModal()"><i class="fa-solid fa-plug-circle-check"></i>Testar</button><button class="btn btn-p" onclick="saveServerModal()"><i class="fa-solid fa-floppy-disk"></i>Salvar</button></div></div>`;document.body.appendChild(w);
+}
+async function testServerModal(){const out=document.getElementById('server-modal-result'),url=document.getElementById('server-modal-url')?.value||'';if(out)out.innerHTML='<div class="ib"><i class="fa-solid fa-spinner fa-spin"></i><div>Testando…</div></div>';try{const r=await testServerConnection(url);if(out)out.innerHTML=`<div class="sb"><i class="fa-solid fa-check"></i><div>Servidor online · versão ${r.version??0}.</div></div>`}catch(err){if(out)out.innerHTML=`<div class="rb"><i class="fa-solid fa-triangle-exclamation"></i><div>${esc(String(err.message||err))}</div></div>`}}
+function saveServerModal(){const url=normalizeApiUrl(document.getElementById('server-modal-url')?.value||'');if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/i.test(url)){const out=document.getElementById('server-modal-result');if(out)out.innerHTML='<div class="rb"><i class="fa-solid fa-circle-exclamation"></i><div>Informe um link /exec válido.</div></div>';return;}localStorage.setItem(API_URL_STORAGE_KEY,url);document.getElementById('server-connection-modal')?.remove();setSyncStatus('offline','Servidor salvo','Faça login para validar a autenticação.');}
 
 // =====================================================
-// SINCRONIZAÇÃO CENTRAL COM O SERVIDOR
+// CHAVES COMPARTILHADAS ENTRE OS NAVEGADORES
 // =====================================================
-const SERVER_SYNC_EXACT_KEYS = new Set([
-  'crisdu_employee_state',
-  'crisdu_important_notices',
-  'crisdu_demand_log',
-  'crisdu_live_notifs',
-  'crisdu_custom_tasks',
-  'crisdu_solicitacoes',
-  'crisdu_politicas_v3',
-  'crisdu_politicas_historico_v3',
-  'crisdu_employee_profiles',
-  'crisdu_employee_task_onboarding',
-  'crisdu_added_users',
-  'crisdu_added_team_map',
-  'crisdu_management_events',
-  'crisdu_pdis',
-  'crisdu_salary_proposals_v3',
-  'crisdu_job_requests_v3',
-  'crisdu_evaluations',
-  'crisdu_feedbacks',
-  'crisdu_people_date_notifs',
-  'crisdu_user_access'
-]);
+const SERVER_SYNC_EXACT_KEYS=new Set(['crisdu_employee_state','crisdu_important_notices','crisdu_demand_log','crisdu_live_notifs','crisdu_custom_tasks','crisdu_solicitacoes','crisdu_politicas_v3','crisdu_politicas_historico_v3','crisdu_employee_profiles','crisdu_employee_task_onboarding','crisdu_added_users','crisdu_added_team_map','crisdu_management_events','crisdu_pdis','crisdu_salary_proposals_v3','crisdu_job_requests_v3','crisdu_evaluations','crisdu_feedbacks','crisdu_people_date_notifs','crisdu_user_access']);
+function isServerSyncKey(key){key=String(key||'');return SERVER_SYNC_EXACT_KEYS.has(key)||key.startsWith('crisdu_photo_');}
 
-function isServerSyncKey(key){
-  key=String(key||'');
-  return SERVER_SYNC_EXACT_KEYS.has(key)||key.startsWith('crisdu_photo_');
-}
-
-const __storageSetItem=Storage.prototype.setItem;
-const __storageRemoveItem=Storage.prototype.removeItem;
-const __storageClear=Storage.prototype.clear;
-let __applyingServerData=false;
-let __serverPendingSets={};
-let __serverPendingRemoves=new Set();
-let __serverSyncTimer=null;
-let __serverSyncInFlight=false;
-
-function rawLocalSet(key,value){
-  __storageSetItem.call(localStorage,String(key),String(value));
-}
-function rawLocalRemove(key){
-  __storageRemoveItem.call(localStorage,String(key));
-}
-
-function queueServerSet(key,value){
-  if(__applyingServerData||!isServerSyncKey(key)||!sessionStorage.getItem('crisdu_api_token'))return;
-  __serverPendingSets[String(key)]=String(value);
-  __serverPendingRemoves.delete(String(key));
-  scheduleServerFlush();
-}
-function queueServerRemove(key){
-  if(__applyingServerData||!isServerSyncKey(key)||!sessionStorage.getItem('crisdu_api_token'))return;
-  delete __serverPendingSets[String(key)];
-  __serverPendingRemoves.add(String(key));
-  scheduleServerFlush();
-}
-function scheduleServerFlush(){
-  clearTimeout(__serverSyncTimer);
-  __serverSyncTimer=setTimeout(flushServerSync,500);
-}
-
-Storage.prototype.setItem=function(key,value){
-  const out=__storageSetItem.call(this,key,value);
-  if(this===localStorage)queueServerSet(key,value);
-  return out;
-};
-Storage.prototype.removeItem=function(key){
-  const out=__storageRemoveItem.call(this,key);
-  if(this===localStorage)queueServerRemove(key);
-  return out;
-};
-Storage.prototype.clear=function(){
-  if(this!==localStorage)return __storageClear.call(this);
-  const before=[];
-  for(let i=0;i<localStorage.length;i++){
-    const k=localStorage.key(i);if(isServerSyncKey(k))before.push(k);
-  }
-  const out=__storageClear.call(this);
-  before.forEach(queueServerRemove);
-  return out;
-};
+const __storageSetItem=Storage.prototype.setItem,__storageRemoveItem=Storage.prototype.removeItem,__storageClear=Storage.prototype.clear;
+let __applyingServerData=false,__serverPendingSets={},__serverPendingRemoves=new Set(),__serverSyncTimer=null,__serverSyncInFlight=false,__serverFlushAgain=false,__serverPollTimer=null,__serverPullInFlight=false;
+function rawLocalSet(key,value){__storageSetItem.call(localStorage,String(key),String(value));}
+function rawLocalRemove(key){__storageRemoveItem.call(localStorage,String(key));}
+function queueServerSet(key,value){if(__applyingServerData||!isServerSyncKey(key)||!sessionStorage.getItem('crisdu_api_token'))return;__serverPendingSets[String(key)]=String(value);__serverPendingRemoves.delete(String(key));scheduleServerFlush();}
+function queueServerRemove(key){if(__applyingServerData||!isServerSyncKey(key)||!sessionStorage.getItem('crisdu_api_token'))return;delete __serverPendingSets[String(key)];__serverPendingRemoves.add(String(key));scheduleServerFlush();}
+function scheduleServerFlush(delay=450){clearTimeout(__serverSyncTimer);__serverSyncTimer=setTimeout(flushServerSync,delay);}
+Storage.prototype.setItem=function(key,value){const out=__storageSetItem.call(this,key,value);if(this===localStorage)queueServerSet(key,value);return out;};
+Storage.prototype.removeItem=function(key){const out=__storageRemoveItem.call(this,key);if(this===localStorage)queueServerRemove(key);return out;};
+Storage.prototype.clear=function(){if(this!==localStorage)return __storageClear.call(this);const before=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(isServerSyncKey(k))before.push(k)}const out=__storageClear.call(this);before.forEach(queueServerRemove);return out;};
 
 async function flushServerSync(){
-  if(__serverSyncInFlight||!sessionStorage.getItem('crisdu_api_token'))return;
-  const sets={...__serverPendingSets};
-  const removes=[...__serverPendingRemoves];
-  if(!Object.keys(sets).length&&!removes.length)return;
-  __serverPendingSets={};
-  __serverPendingRemoves.clear();
-  __serverSyncInFlight=true;
-  try{
-    const r=await apiRequest('batch',{sets,removes});
-    if(r.version!=null)sessionStorage.setItem('crisdu_server_version',String(r.version));
-    sessionStorage.setItem('crisdu_last_server_sync',new Date().toISOString());
-  }catch(err){
-    console.error('Falha ao sincronizar com o servidor:',err);
-    Object.assign(__serverPendingSets,sets);
-    removes.forEach(k=>__serverPendingRemoves.add(k));
-    clearTimeout(__serverSyncTimer);
-    __serverSyncTimer=setTimeout(flushServerSync,3000);
-  }finally{
-    __serverSyncInFlight=false;
-  }
+  if(!sessionStorage.getItem('crisdu_api_token'))return false;
+  if(__serverSyncInFlight){__serverFlushAgain=true;return false;}
+  const sets={...__serverPendingSets},removes=[...__serverPendingRemoves];if(!Object.keys(sets).length&&!removes.length)return true;
+  __serverPendingSets={};__serverPendingRemoves.clear();__serverSyncInFlight=true;setSyncStatus('syncing','Salvando…','Enviando alterações para o servidor.');
+  let ok=false;
+  try{const r=await apiRequest('batch',{sets,removes},{silent:true});if(r.version!=null)sessionStorage.setItem('crisdu_server_version',String(r.version));sessionStorage.setItem('crisdu_last_server_sync',new Date().toISOString());setSyncStatus('online','Sincronizado','Alterações gravadas no servidor.');ok=true;}
+  catch(err){console.error('Falha ao sincronizar com o servidor:',err);Object.assign(__serverPendingSets,sets);removes.forEach(k=>__serverPendingRemoves.add(k));setSyncStatus('error','Pendente','Não foi possível salvar agora. O sistema tentará novamente.');}
+  finally{__serverSyncInFlight=false;const hasMore=Object.keys(__serverPendingSets).length||__serverPendingRemoves.size;if(hasMore||__serverFlushAgain){__serverFlushAgain=false;scheduleServerFlush(ok?180:3000)}}
+  return ok;
 }
-
-function collectSyncLocalData(){
-  const out={};
-  for(let i=0;i<localStorage.length;i++){
-    const key=localStorage.key(i);
-    if(isServerSyncKey(key))out[key]=localStorage.getItem(key)||'';
-  }
-  return out;
+function collectSyncLocalData(){const out={};for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(isServerSyncKey(key))out[key]=localStorage.getItem(key)||''}return out;}
+function applyServerData(data){data=data&&typeof data==='object'?data:{};let changed=false;__applyingServerData=true;try{const localKeys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(isServerSyncKey(k))localKeys.push(k)}localKeys.forEach(k=>{if(!Object.prototype.hasOwnProperty.call(data,k)){rawLocalRemove(k);changed=true}});Object.keys(data).forEach(k=>{if(!isServerSyncKey(k))return;const next=String(data[k]??'');if(localStorage.getItem(k)!==next){rawLocalSet(k,next);changed=true}})}finally{__applyingServerData=false}return changed;}
+function replaceArrayFromStorage(ref,key){try{const v=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(v)&&Array.isArray(ref))ref.splice(0,ref.length,...v)}catch(e){console.warn('Falha ao hidratar',key,e)}}
+function refreshRuntimeFromStorage(render=true){
+  try{reloadPersistentRuntimeData()}catch(e){}
+  try{replaceArrayFromStorage(DEMAND_LOG,'crisdu_demand_log')}catch(e){}
+  try{replaceArrayFromStorage(LIVE_NOTIFS,'crisdu_live_notifs')}catch(e){}
+  try{replaceArrayFromStorage(CUSTOM_TASKS,'crisdu_custom_tasks')}catch(e){}
+  try{replaceArrayFromStorage(IMPORTANT_NOTICES,'crisdu_important_notices')}catch(e){}
+  try{replaceArrayFromStorage(SOLICITACOES,'crisdu_solicitacoes')}catch(e){}
+  try{replaceArrayFromStorage(PDI_STORE,'crisdu_pdis')}catch(e){}
+  try{replaceArrayFromStorage(POLITICAS,'crisdu_politicas_v3');replaceArrayFromStorage(POLITICAS_HIST,'crisdu_politicas_historico_v3')}catch(e){}
+  try{window.SALARY_PROPOSALS=JSON.parse(localStorage.getItem('crisdu_salary_proposals_v3')||'[]')||[]}catch(e){}
+  try{window.JOB_REQUESTS=JSON.parse(localStorage.getItem('crisdu_job_requests_v3')||'[]')||[]}catch(e){}
+  try{normalizeLiveNotifications()}catch(e){}
+  if(render&&CURRENT_USER&&CP&&CV&&!document.querySelector('.modal-backdrop')&&CV!=='cad'){renderApp(CP,CV)}else{try{renderNotificationCenter()}catch(e){}}
 }
-
-function applyServerData(data){
-  data=data&&typeof data==='object'?data:{};
-  let changed=false;
-  __applyingServerData=true;
-  try{
-    const localKeys=[];
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);if(isServerSyncKey(k))localKeys.push(k);
-    }
-    localKeys.forEach(k=>{
-      if(!Object.prototype.hasOwnProperty.call(data,k)){
-        rawLocalRemove(k);changed=true;
-      }
-    });
-    Object.keys(data).forEach(k=>{
-      if(!isServerSyncKey(k))return;
-      const next=String(data[k]??'');
-      if(localStorage.getItem(k)!==next){rawLocalSet(k,next);changed=true;}
-    });
-  }finally{
-    __applyingServerData=false;
-  }
-  return changed;
-}
-
 async function prepareServerDataAfterLogin(userKey){
-  const r=await apiRequest('all');
-  const remote=r.data&&typeof r.data==='object'?r.data:{};
-  if(r.version!=null)sessionStorage.setItem('crisdu_server_version',String(r.version));
-
-  if(Object.keys(remote).length===0){
-    // Primeira migração: se o servidor estiver vazio, o navegador que já possui
-    // a base do sistema envia seus dados atuais para formar a base central.
-    const local=collectSyncLocalData();
-    if(Object.keys(local).length){
-      const saved=await apiRequest('batch',{sets:local,removes:[]});
-      if(saved.version!=null)sessionStorage.setItem('crisdu_server_version',String(saved.version));
-    }
-  }else{
-    // Depois da migração, o servidor passa a ser a fonte central.
-    applyServerData(remote);
-  }
-
-  sessionStorage.setItem('crisdu_session_user',userKey);
-  sessionStorage.setItem('crisdu_server_ready','1');
-  location.reload();
+  // Migração segura: antes de hidratar o navegador, envia a base local existente para o
+  // backend V4, que faz merge por registro. Assim dados antigos ainda presentes em um
+  // navegador não são descartados quando o servidor já possui outros registros.
+  const local=collectSyncLocalData();
+  if(Object.keys(local).length){const merged=await apiRequest('batch',{sets:local,removes:[]});if(merged.version!=null)sessionStorage.setItem('crisdu_server_version',String(merged.version));}
+  const r=await apiRequest('all');const remote=r.data&&typeof r.data==='object'?r.data:{};if(r.version!=null)sessionStorage.setItem('crisdu_server_version',String(r.version));
+  applyServerData(remote);
+  sessionStorage.setItem('crisdu_session_user',userKey);sessionStorage.setItem('crisdu_server_ready','1');refreshRuntimeFromStorage(false);switchProfile(userKey);startServerPolling();
 }
-
 async function restoreServerSession(){
-  const token=sessionStorage.getItem('crisdu_api_token')||'';
-  const userKey=sessionStorage.getItem('crisdu_session_user')||'';
-  if(!token||!userKey)return;
-  try{
-    const r=await apiRequest('all');
-    const remote=r.data&&typeof r.data==='object'?r.data:{};
-    if(r.version!=null)sessionStorage.setItem('crisdu_server_version',String(r.version));
-    const changed=Object.keys(remote).length?applyServerData(remote):false;
-    if(changed&&sessionStorage.getItem('crisdu_server_hydrated_reload')!=='1'){
-      sessionStorage.setItem('crisdu_server_hydrated_reload','1');
-      location.reload();
-      return;
-    }
-    sessionStorage.removeItem('crisdu_server_hydrated_reload');
-    switchProfile(userKey);
-  }catch(err){
-    console.error('Sessão do servidor indisponível:',err);
-    sessionStorage.removeItem('crisdu_api_token');
-    sessionStorage.removeItem('crisdu_session_user');
-    sessionStorage.removeItem('crisdu_server_ready');
-    renderLogin();
-  }
+  const token=sessionStorage.getItem('crisdu_api_token')||'',userKey=sessionStorage.getItem('crisdu_session_user')||'';if(!token||!userKey){setSyncStatus('offline','Servidor','Faça login para sincronizar.');return}
+  try{const r=await apiRequest('all',{},{silent:true});const remote=r.data&&typeof r.data==='object'?r.data:{};if(r.version!=null)sessionStorage.setItem('crisdu_server_version',String(r.version));if(Object.keys(remote).length)applyServerData(remote);refreshRuntimeFromStorage(false);setSyncStatus('online','Sincronizado','Base central carregada.');switchProfile(userKey);startServerPolling();}
+  catch(err){console.error('Sessão do servidor indisponível:',err);sessionStorage.removeItem('crisdu_api_token');sessionStorage.removeItem('crisdu_session_user');sessionStorage.removeItem('crisdu_server_ready');setSyncStatus('error','Servidor','Sessão inválida ou servidor indisponível.');renderLogin()}
 }
+async function pullServerIfChanged(force=false){
+  if(__serverPullInFlight||__serverSyncInFlight||Object.keys(__serverPendingSets).length||__serverPendingRemoves.size||!sessionStorage.getItem('crisdu_api_token'))return false;
+  __serverPullInFlight=true;
+  try{const v=await apiRequest('version',{},{silent:true});const remoteVersion=Number(v.version||0),localVersion=Number(sessionStorage.getItem('crisdu_server_version')||0);if(!force&&remoteVersion<=localVersion)return false;const r=await apiRequest('all',{},{silent:true});const changed=applyServerData(r.data||{});sessionStorage.setItem('crisdu_server_version',String(r.version??remoteVersion));sessionStorage.setItem('crisdu_last_server_pull',new Date().toISOString());setSyncStatus('online','Atualizado',changed?'Novos dados recebidos do servidor.':'Base já estava atualizada.');if(changed)refreshRuntimeFromStorage(true);return changed;}
+  catch(err){console.warn('Consulta de atualização falhou:',err);setSyncStatus('error','Sem conexão','Tentaremos novamente automaticamente.');return false}finally{__serverPullInFlight=false}
+}
+function startServerPolling(){stopServerPolling();if(!sessionStorage.getItem('crisdu_api_token'))return;__serverPollTimer=setInterval(()=>pullServerIfChanged(false),6000);updateSyncStatusUI();}
+function stopServerPolling(){if(__serverPollTimer){clearInterval(__serverPollTimer);__serverPollTimer=null}}
+window.addEventListener('focus',()=>{if(sessionStorage.getItem('crisdu_api_token'))pullServerIfChanged(false)});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&sessionStorage.getItem('crisdu_api_token'))pullServerIfChanged(false)});
+async function forceServerSync(){const out=document.getElementById('cfg-server-test-result');if(out)out.innerHTML='<div class="ib"><i class="fa-solid fa-arrows-rotate fa-spin"></i><div>Enviando alterações pendentes e conferindo a base central…</div></div>';try{await flushServerSync();await pullServerIfChanged(true);const r=await apiRequest('syncTest',{},{});if(out)out.innerHTML=`<div class="sb"><i class="fa-solid fa-circle-check"></i><div><strong>Sincronização testada com sucesso.</strong> Gravação e leitura confirmadas em ${esc(r.at||'agora')}.</div></div>`}catch(err){if(out)out.innerHTML=`<div class="rb"><i class="fa-solid fa-triangle-exclamation"></i><div>${esc(String(err.message||err))}</div></div>`}renderSyncDiagnostics();}
+function renderSyncDiagnostics(){const box=document.getElementById('sync-diagnostics');if(!box)return;const fmt=v=>{if(!v)return '—';try{return new Date(v).toLocaleString('pt-BR')}catch(e){return v}};box.innerHTML=`<div class="diag-grid"><div class="diag-item"><div class="diag-k">Servidor</div><div class="diag-v">${esc(apiHostLabel())}</div></div><div class="diag-item"><div class="diag-k">Versão central</div><div class="diag-v">${esc(sessionStorage.getItem('crisdu_server_version')||'0')}</div></div><div class="diag-item"><div class="diag-k">Último envio</div><div class="diag-v">${esc(fmt(sessionStorage.getItem('crisdu_last_server_sync')))}</div></div><div class="diag-item"><div class="diag-k">Atualização automática</div><div class="diag-v">${__serverPollTimer?'Ativa · 6 s':'Inativa'}</div></div></div>`;}
+
+// =====================================================
+// NOTIFICAÇÕES COM ESTADO LIDA / NÃO LIDA
+// =====================================================
+function smallHash(text){let h=2166136261;for(let i=0;i<String(text).length;i++){h^=String(text).charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)}
+function normalizeLiveNotifications(){if(typeof LIVE_NOTIFS==='undefined'||!Array.isArray(LIVE_NOTIFS))return false;let changed=false;LIVE_NOTIFS.forEach(n=>{if(!n.id){n.id='notif_'+smallHash([n.msg||'',n.owner||'',n.at||'',Array.isArray(n.recipients)?n.recipients.join(','):''].join('|'));changed=true}if(!Array.isArray(n.readBy)){n.readBy=[];changed=true}});return changed;}
+function notificationVisibleToCurrentUser(n){if(!n||!CURRENT_USER)return false;if(Array.isArray(n.recipients)&&n.recipients.length)return n.recipients.includes(CURRENT_USER);if(n.owner)return n.owner===CURRENT_USER;return CP==='rh'}
+function visibleLiveNotifications(){normalizeLiveNotifications();return (LIVE_NOTIFS||[]).filter(notificationVisibleToCurrentUser).sort((a,b)=>{const da=parsePtBrDateTime(a.at)||new Date(0),db=parsePtBrDateTime(b.at)||new Date(0);return db-da})}
+function isNotificationRead(n){return Array.isArray(n.readBy)&&n.readBy.includes(CURRENT_USER)}
+function renderNotificationCenter(){
+  const nl=document.getElementById('notif-list'),dot=document.getElementById('notif-dot'),count=document.getElementById('notif-unread-count');if(!nl||!CURRENT_USER)return;
+  const arr=visibleLiveNotifications(),unread=arr.filter(n=>!isNotificationRead(n));
+  if(dot)dot.style.display=unread.length?'':'none';if(count){count.style.display=unread.length?'inline-flex':'none';count.textContent=unread.length>99?'99+':String(unread.length)}
+  nl.innerHTML=arr.length?arr.slice(0,25).map(n=>{const unreadNow=!isNotificationRead(n),icon=n.level==='Crítica'?'fa-triangle-exclamation':n.type==='solicitacao'?'fa-file-circle-check':'fa-circle-check',tone=n.level==='Crítica'?'#A32D2D':n.level==='Alta'?'#854F0B':'#0B4F8A',bg=n.level==='Crítica'?'#FCEBEB':n.level==='Alta'?'#FAEEDA':'#EAF3FB';return `<div class="notif-item ${unreadNow?'unread':'read'}" style="display:flex;gap:9px;align-items:flex-start"><div style="width:30px;height:30px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fa-solid ${icon}" style="font-size:12px;color:${tone}"></i></div><div style="font-size:12px;color:var(--text);line-height:1.45;flex:1">${esc(n.msg||'Notificação')}<div style="font-size:9.5px;color:var(--text3);margin-top:3px">${esc(n.at||'')}</div></div>${unreadNow?'<span class="notif-unread-mark" title="Não lida"></span>':''}</div>`}).join(''):'<div class="notif-empty"><i class="fa-regular fa-bell" style="font-size:20px;display:block;margin-bottom:7px"></i>Nenhuma notificação para o seu perfil.</div>';
+}
+function markAllNotificationsRead(){if(!CURRENT_USER)return;normalizeLiveNotifications();let changed=false;visibleLiveNotifications().forEach(n=>{if(!n.readBy.includes(CURRENT_USER)){n.readBy.push(CURRENT_USER);changed=true}});if(changed){localStorage.setItem('crisdu_live_notifs',JSON.stringify(LIVE_NOTIFS))}renderNotificationCenter();}
 
 // ─── STATE ───
 let CP = '', CV = '';
 const CARGOS_TESOURARIA = [{"cargo": "Analista de Tesouraria (Operações)", "tarefas": ["Administrar as rotinas de Tesouraria do grupo de empresas sob sua responsabilidade, assegurando execução padronizada, cumprimento de prazos e aderência às políticas corporativas.", "Certificar diariamente os saldos bancários e atualizar o FinSight até 9h00, mantendo a posição diária de caixa, disponibilidades e fluxo de caixa das empresas atendidas.", "Agendar pagamentos D+1 antes do vencimento das empresas sob sua responsabilidade, somente mediante lançamento correto e aprovação no sistema, respeitando alçadas e segregação de funções.", "Conferir pagamentos efetivados e comprovantes, validando valores, favorecidos, datas, bancos e registros no sistema financeiro.", "Tratar rejeições, devoluções, retornos e demais pendências bancárias, acompanhando a regularização até a efetivação e mantendo evidências do tratamento realizado.", "Elaborar e revisar semanalmente o fluxo de caixa, a posição bancária e o relatório de contas e saldos das empresas atendidas, comparando realizado versus previsto e justificando desvios relevantes.", "Antecipar pendências bancárias, pagamentos e baixas da semana seguinte, coordenando as regularizações necessárias para evitar atrasos, bloqueios, encargos ou interrupções.", "Validar movimentações entre empresas (intercompany), observando autorizações, finalidade, documentação de suporte, disponibilidade financeira e regras societárias aplicáveis.", "Executar e apoiar os fechamentos financeiro e bancário diário, semanal e mensal, incluindo conciliações bancárias e contas transitórias e o tratamento das divergências dentro do período.", "Manter atualizada a posição de fornecedores, financiamentos, extratos e demais compromissos financeiros das empresas atendidas, garantindo organização e qualidade das informações.", "Disponibilizar à Contabilidade e aos controles internos comprovantes, extratos, saldos e relatórios extraídos da plataforma financeira integrada ao sistema, preservando rastreabilidade e evidências.", "Emitir a posição financeira consolidada do grupo de empresas sob sua responsabilidade, contemplando caixa, aplicações, financiamentos, compromissos, pendências e disponibilidade financeira.", "Padronizar controles operacionais e atuar em conjunto com o outro Analista de Tesouraria para garantir uniformidade de processos, cobertura das rotinas e continuidade operacional entre os grupos de empresas.", "Cumprir políticas de Tesouraria, confidencialidade, acessos bancários, alçadas e segregação de funções, sem compartilhar senhas, acessos ou autorizações e reportando exceções e riscos identificados."]}, {"cargo": "Analista de Tesouraria (Estratégico)", "tarefas": ["Monitorar diariamente a carteira de investimentos, acompanhando rentabilidade, liquidez, vencimentos, limites e aderencia a politica financeira.", "Monitorar financiamentos e operacoes de cambio, acompanhando cronogramas, taxas, encargos, garantias, covenants e exposicoes financeiras.", "Atualizar indicadores e dashboards de Tesouraria, assegurando qualidade dos dados e visibilidade para a gestao.", "Acompanhar a liquidez consolidada e avaliar alternativas de aplicacao dos excedentes de caixa, considerando risco, prazo, rentabilidade e necessidade operacional.", "Apoiar decisoes estrategicas por meio de analises de caixa, endividamento, investimentos, cambio e estrutura bancaria.", "Elaborar estudos, relatorios executivos e indicadores, destacando liquidez, custo financeiro, investimentos e riscos.", "Revisar mensalmente a carteira de investimentos, financiamentos, contratos financeiros, vencimentos e condicoes negociadas.", "Avaliar oportunidades de captacao, renegociacao, aplicacao e otimizacao da estrutura de capital e do custo financeiro.", "Revisar periodicamente a politica financeira, limites bancarios, alçadas e controles de Tesouraria, propondo melhorias de governanca e segregacao de funcoes.", "Apoiar negociacoes com instituicoes financeiras sobre taxas, tarifas, linhas de credito, garantias e condicoes comerciais.", "Desenvolver novos indicadores e evoluir modulos do FinSight e demais ferramentas de Tesouraria, promovendo automacao e integracao de dados.", "Controlar e apoiar o envio de documentos aos bancos para cadastros e limites atualizados"]}, {"cargo": "Assistente de Tesouraria", "tarefas": ["Apoiar a execução das rotinas de Tesouraria das empresas sob sua responsabilidade, cumprindo prazos, procedimentos e controles definidos pela área.", "Atualizar diariamente saldos bancários, posição de caixa e informações no FinSight, garantindo consistência entre extratos e sistema financeiro.", "Preparar e conferir os dados necessários aos agendamentos de pagamentos, assegurando que documentos, lançamentos e aprovações estejam completos antes do envio ao Analista.", "Acompanhar pagamentos efetivados, emitir e organizar comprovantes e sinalizar imediatamente divergências de valor, favorecido, data ou conta bancária.", "Acompanhar rejeições, devoluções e retornos bancários, levantando evidências e apoiando o tratamento das pendências até a regularização.", "Apoiar a elaboração do fluxo de caixa diário e semanal, consolidando previsões de entradas, saídas, saldos e compromissos das empresas atendidas.", "Atualizar controles de fornecedores, financiamentos, tarifas, aplicações, extratos e demais compromissos financeiros, mantendo dados e documentos organizados.", "Apoiar movimentações entre empresas (intercompany), conferindo documentação de suporte, dados bancários, autorizações e registros necessários.", "Apoiar conciliações bancárias e o fechamento financeiro diário, semanal e mensal, identificando diferenças e encaminhando-as para análise e correção.", "Disponibilizar comprovantes, extratos, saldos e relatórios para Contabilidade, controles internos e demais áreas autorizadas, preservando rastreabilidade documental.", "Acompanhar pendências de pagamentos e baixas da carteira de empresas atendida, sinalizando riscos de atraso, bloqueio, encargos ou interrupção de serviços.", "Cumprir as políticas de Tesouraria, confidencialidade, acessos bancários, alçadas e segregação de funções, reportando qualquer inconsistência ou exceção identificada."]}, {"cargo": "Auxiliar de Tesouraria", "tarefas": ["Apoiar as rotinas operacionais de Tesouraria das empresas sob sua responsabilidade, seguindo procedimentos, prazos e orientações do Assistente e dos Analistas.", "Consultar e organizar extratos e saldos bancários, apoiando a atualização da posição diária de caixa e dos controles internos da Tesouraria.", "Apoiar a atualização do FinSight e de planilhas de controle, inserindo informações previamente conferidas e mantendo os registros organizados.", "Separar e conferir documentos de pagamentos, verificando dados básicos como empresa, fornecedor, vencimento, valor, banco e existência do lançamento no sistema.", "Apoiar a preparação dos pagamentos para conferência do Assistente ou Analista, sem realizar liberações bancárias e respeitando integralmente a segregação de funções.", "Emitir, salvar e organizar comprovantes de pagamentos efetivados, mantendo a documentação disponível para consulta e auditoria.", "Acompanhar retornos e pendências bancárias simples, sinalizando rejeições, devoluções ou inconsistências para tratamento pelo Assistente ou Analista.", "Apoiar a conciliação bancária mediante comparação de extratos, comprovantes e registros do sistema, destacando diferenças encontradas.", "Organizar documentos de fornecedores, financiamentos, extratos e demais informações financeiras necessárias aos fechamentos e controles da área.", "Atender solicitações operacionais internas relacionadas a comprovantes e informações financeiras, observando os níveis de acesso e confidencialidade.", "Cumprir os procedimentos de Tesouraria e as regras de segurança da informação, não compartilhando senhas, acessos bancários ou dados financeiros restritos."]}];
-const NOTIFS = {
-  colab: [
-    {icon:'fa-bolt',color:'#0F6E56',bg:'#E1F5EE',text:'Nova tarefa: "Conferência de fornecedores" adicionada pela coordenação'},
-    {icon:'fa-calendar-check',color:'#854F0B',bg:'#FAEEDA',text:'Desenvolvimento Q2/2026 — prazo em 13 dias'},
-    {icon:'fa-check-circle',color:'#3B6D11',bg:'#EAF3DE',text:'Solicitação aprovada pela coordenação'},
-  ],
-  gestor: [
-    {icon:'fa-triangle-exclamation',color:'#A32D2D',bg:'#FCEBEB',text:'2 tarefas em atraso — equipe Tesouraria'},
-    {icon:'fa-user-check',color:'#534AB7',bg:'#EEEDFE',text:'Franciele concluiu uma tarefa da Tesouraria'},
-    {icon:'fa-file-alt',color:'#854F0B',bg:'#FAEEDA',text:'4 desenvolvimentos pendentes — prazo 30/06'},
-  ],
-  rh: [
-    {icon:'fa-triangle-exclamation',color:'#A32D2D',bg:'#FCEBEB',text:'3 PDIs com prazo vencido — ação necessária'},
-    {icon:'fa-users',color:'#534AB7',bg:'#EEEDFE',text:'12 desenvolvimentos pendentes no sistema'},
-    {icon:'fa-bell',color:'#854F0B',bg:'#FAEEDA',text:'Ciclo Q2/2026 — prazo final 30/06/2026'},
-  ]
-};
+const NOTIFS = {colab:[],gestor:[],rh:[]}; // notificações demonstrativas removidas — somente eventos reais
 
 const NAVS = {
   colab:[
@@ -681,7 +650,7 @@ const LIVE_NOTIFS=JSON.parse(localStorage.getItem('crisdu_live_notifs')||'[]');
 const CUSTOM_TASKS=JSON.parse(localStorage.getItem('crisdu_custom_tasks')||'[]');
 const IMPORTANT_NOTICES=JSON.parse(localStorage.getItem('crisdu_important_notices')||'[]');
 function saveNotices(){localStorage.setItem('crisdu_important_notices',JSON.stringify(IMPORTANT_NOTICES));}
-function saveState(){localStorage.setItem('crisdu_demand_log',JSON.stringify(DEMAND_LOG));localStorage.setItem('crisdu_live_notifs',JSON.stringify(LIVE_NOTIFS));localStorage.setItem('crisdu_custom_tasks',JSON.stringify(CUSTOM_TASKS));saveNotices();}
+function saveState(){normalizeLiveNotifications();localStorage.setItem('crisdu_demand_log',JSON.stringify(DEMAND_LOG));localStorage.setItem('crisdu_live_notifs',JSON.stringify(LIVE_NOTIFS));localStorage.setItem('crisdu_custom_tasks',JSON.stringify(CUSTOM_TASKS));saveNotices();}
 function parsePtBrDateTime(v){
   if(!v)return null;
   const m=String(v).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
@@ -862,7 +831,7 @@ function saveDemandCompletion(owner,task,source,taskId=''){
     if(status==='Concluída com pendência'||status==='Não concluída')msg+=' Pendência registrada.';
     if(hadDifficulty==='sim')msg+=' Dificuldade registrada.';
     if(melhoria)msg+=' Sugestão de melhoria registrada.';
-    LIVE_NOTIFS.unshift({msg,level,owner,recipients,at});
+    LIVE_NOTIFS.unshift({id:'notif_exec_'+(taskId||smallHash(task))+'_'+Date.now(),msg,level,owner,recipients,at,type:'execucao_tarefa',taskId:taskId||'',readBy:[]});
     saveState();localStorage.setItem('crisdu_last_sync',JSON.stringify({owner,task,status,at}));document.getElementById('demand-modal')?.remove();renderApp(CP,CV);
   };
   if(file){const r=new FileReader();r.onload=()=>finish(r.result);r.onerror=()=>{if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='<i class="fa-solid fa-check"></i>Salvar finalização';}if(box){box.style.display='block';box.textContent='Não foi possível ler a evidência. Tente novamente ou salve sem o arquivo.';}};r.readAsDataURL(file);}else finish();
@@ -882,6 +851,7 @@ function switchProfile(userKey){
   CP=acc.role;
   CV=(CP==='colab')?'tarefas':(CP==='gestor'?'demandasequipe':'home');
   renderApp(CP,CV);
+  startServerPolling();
 }
 
 function renderApp(p,view){
@@ -893,16 +863,15 @@ function renderApp(p,view){
   const navAv=document.getElementById('nav-av'); navAv.innerHTML=getPhoto(CURRENT_USER)?`<img class="avatar-img" src="${getPhoto(CURRENT_USER)}" alt="${u.n}">`:u.i;
   navAv.style.background=u.bg; navAv.style.color=u.cl; navAv.style.overflow='hidden';
   document.getElementById('nav-name').textContent=u.n;
-  document.getElementById('notif-dot').style.display='';
-  // notifs
+  // notificações reais + estado de leitura
   ensurePeopleDateNotifications();
-  const nl=document.getElementById('notif-list');
-  const visibleLive=(LIVE_NOTIFS||[]).filter(x=>!x.recipients||x.recipients.includes(CURRENT_USER)||(x.owner===CURRENT_USER));
-  nl.innerHTML=([...visibleLive.slice(0,8).map(x=>({icon:x.level==='Crítica'?'fa-triangle-exclamation':'fa-circle-check',color:x.level==='Crítica'?'#A32D2D':x.level==='Alta'?'#7A4B2A':'#0B4F8A',bg:x.level==='Crítica'?'#FCEBEB':x.level==='Alta'?'#F4ECE6':'#EAF3FB',text:x.msg})),...(NOTIFS[p]||[])]).map(n=>`<div class="notif-item" style="display:flex;gap:10px;align-items:flex-start"><div style="width:30px;height:30px;border-radius:50%;background:${n.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fa-solid ${n.icon}" style="font-size:12px;color:${n.color}"></i></div><div style="font-size:12px;color:var(--text);line-height:1.5">${n.text}</div></div>`).join('');
+  normalizeLiveNotifications();
+  renderNotificationCenter();
+  updateSyncStatusUI();
   // sidebar
   const sb=document.getElementById('sidebar');
   sb.innerHTML=`<div class="sb-profile"><div style="display:flex;align-items:center;gap:10px">${avatarHTML(CURRENT_USER,40)}<div><div class="sb-name">${u.n}</div><div class="sb-role">${u.r}</div></div></div>${profilePhotoActions(CURRENT_USER)}</div>`
-  +nav.map(n=>n.s?`<div class="nav-sec">${n.s}</div>`:`<div class="nav-item${n.id===view?' active':''}" onclick="go('${n.id}')"><i class="fa-solid ${n.ic}"></i>${n.lb}${n.dot?`<span class="nav-badge">!</span>`:''}</div>`).join('');
+  +nav.map(n=>n.s?`<div class="nav-sec">${n.s}</div>`:`<div class="nav-item${n.id===view?' active':''}" onclick="go('${n.id}')"><i class="fa-solid ${n.ic}"></i>${n.lb}</div>`).join('');
   ensureRecurringOccurrences();
   dispatch(p,view);
   renderActiveNoticeBanner();
@@ -971,6 +940,7 @@ function dispatch(p,v){
 }
 
 function logout(){
+  stopServerPolling();
   // Encerra a sessão local e também invalida a sessão no servidor.
   const __token=sessionStorage.getItem('crisdu_api_token')||'';
   if(__token){apiRequest('logout').catch(()=>{});}
@@ -994,8 +964,9 @@ function logout(){
 }
 
 function toggleNotif(){
-  const p=document.getElementById('notif-panel');
-  p.style.display=p.style.display==='block'?'none':'block';
+  const p=document.getElementById('notif-panel');if(!p)return;
+  const opening=p.style.display!=='block';p.style.display=opening?'block':'none';
+  if(opening){renderNotificationCenter();markAllNotificationsRead();}
 }
 
 // ─── LOGIN ───
@@ -1022,6 +993,7 @@ function renderLogin(){
         <div id="lerr" style="margin-bottom:10px"></div>
         <div style="text-align:right;margin-bottom:16px"><span style="font-size:11px;color:var(--blue);cursor:pointer;font-weight:600" onclick="showRecuperar()">Esqueci minha senha</span></div>
         <button class="btn btn-p" style="width:100%;justify-content:center;padding:10px" onclick="tryLogin()"><i class="fa-solid fa-right-to-bracket"></i> Entrar</button>
+        <div style="text-align:center"><button class="server-login-link" onclick="openServerConnectionModal()"><i class="fa-solid fa-server"></i>Configurar / testar servidor</button></div>
         <hr class="div" style="margin:16px 0">
         <div style="font-size:11px;color:var(--text3);text-align:center">Primeiro acesso? <span style="color:var(--blue);cursor:pointer;font-weight:600" onclick="document.getElementById('profile-sel').value='primeiro';switchProfile('primeiro')">Defina sua senha aqui</span></div>
       </div>
@@ -1064,14 +1036,7 @@ async function tryLogin(){
   }
 }
 function showRecuperar(){
-  mc().innerHTML=`<div class="login-page"><div class="login-box" style="max-width:390px;width:390px">
-    <button class="btn btn-sm" style="margin-bottom:16px" onclick="renderLogin()"><i class="fa-solid fa-arrow-left"></i> Voltar</button>
-    <div style="font-size:16px;font-weight:700;margin-bottom:4px">Recuperar acesso</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Informe seu usuário. Nesta versão de teste, o sistema gera uma <strong>senha provisória de recuperação na própria tela</strong>. Ao entrar com ela, será obrigatório cadastrar uma nova senha permanente.</div>
-    <div class="fw" style="margin-bottom:16px"><div class="fl">Usuário <span class="req">*</span></div><input type="text" id="recover-user" placeholder="Ex.: bruna"></div>
-    <button class="btn btn-p" style="width:100%;justify-content:center" onclick="generateRecoveryPassword()"><i class="fa-solid fa-key"></i> Gerar senha provisória</button>
-    <div id="recover-result"></div>
-  </div></div>`;
+  mc().innerHTML=`<div class="login-page"><div class="login-box" style="max-width:420px;width:420px"><button class="btn btn-sm" style="margin-bottom:16px" onclick="renderLogin()"><i class="fa-solid fa-arrow-left"></i> Voltar</button><div style="font-size:16px;font-weight:700;margin-bottom:5px">Recuperar acesso</div><div class="ib" style="margin:12px 0"><i class="fa-solid fa-shield-halved"></i><div>Por segurança, senhas não são mais redefinidas apenas no navegador. Solicite uma senha provisória à Gerência/administrador do sistema.</div></div><div style="font-size:11px;color:var(--text3);line-height:1.6">O administrador pode executar <strong>resetarSenhaUsuario('login')</strong> no Apps Script. A nova senha provisória exigirá troca no primeiro acesso.</div><button class="server-login-link" style="margin-top:16px" onclick="openServerConnectionModal()"><i class="fa-solid fa-server"></i>Verificar conexão com o servidor</button></div></div>`;
 }
 function generateRecoveryPassword(){
   const inp=document.getElementById('recover-user'),box=document.getElementById('recover-result');
@@ -1296,7 +1261,7 @@ function renderTarefas(period='Hoje'){
     <div class="metric"><div class="metric-val" style="color:#E24B4A">${_tm.late}</div><div class="metric-lbl">Em atraso / não concluídas</div></div>
   </div>
   <div class="ib"><i class="fa-solid fa-circle-info" style="flex-shrink:0;margin-top:1px"></i><div><strong>Seu quadro mostra somente demandas reais.</strong> Tarefas diárias abrem nos dias configurados; semanais no dia da semana definido; mensais na regra configurada e periódicas no intervalo cadastrado. Cada ocorrência tem registro próprio e alimenta Coordenação, Gerência, Monitoramento e Dashboard.</div></div>
-  ${renderAssignedTasks(_period)||'<div class="card" style="text-align:center;color:var(--text3);padding:30px">Nenhuma tarefa encontrada para este período.</div>'}`;
+  ${(()=>{const atuais=renderAssignedTasks(_period),programadas=renderUpcomingAssignedTemplates(CURRENT_USER);return (atuais||programadas)?(atuais+programadas):'<div class="card" style="text-align:center;color:var(--text3);padding:30px">Nenhuma tarefa encontrada para este período.</div>'})()}`;
 }
 
 // ─── SOLICITAÇÕES ───
@@ -1655,7 +1620,7 @@ function saveCfg(){
   const err=document.getElementById('cfg-err');if(!owner||!title||!desc){if(err)err.innerHTML='<div class="rb" style="margin-bottom:10px"><i class="fa-solid fa-circle-exclamation"></i>Preencha colaborador, título e descrição da tarefa.</div>';return;}
   const _type=document.getElementById('tn-tipo').value,_rec=isRecurringType({type:_type});
   const task={id:'t'+Date.now(),owner,createdBy:CURRENT_USER,title,desc,type:_type,period:document.getElementById('per-sel').value,prazo:document.getElementById('tn-prazo').value.trim(),criticality:document.getElementById('tn-crit').value,obs:document.getElementById('tn-obs').value.trim(),status:_rec?'Programada':'Aguardando aceite',recurrenceTemplate:_rec,createdAt:new Date().toLocaleString('pt-BR')};
-  CUSTOM_TASKS.unshift(task); ensureRecurringOccurrences();LIVE_NOTIFS.unshift({msg:`Nova tarefa para ${USERS[owner]?.n||owner}: ${title}`,level:task.criticality,owner,at:task.createdAt});saveState();renderCfg();
+  CUSTOM_TASKS.unshift(task); ensureRecurringOccurrences();LIVE_NOTIFS.unshift({id:'notif_task_'+task.id,msg:`Nova tarefa para ${USERS[owner]?.n||owner}: ${title}`,level:task.criticality,owner,recipients:[owner],at:task.createdAt,type:'nova_tarefa',taskId:task.id,readBy:[]});saveState();renderCfg();
   const ok=document.getElementById('cfg-ok');if(ok)ok.innerHTML=`<div class="sb"><i class="fa-solid fa-paper-plane"></i><div><strong>Tarefa enviada para ${USERS[owner]?.n||owner}.</strong> Ela já aparece em “Minhas tarefas” com status “Aguardando aceite”.</div></div>`;
 }
 function viewCustomTask(id){
@@ -1691,6 +1656,11 @@ function viewCustomTask(id){
   </div>`;
   document.body.appendChild(w);
 }
+function renderUpcomingAssignedTemplates(owner){
+  const arr=CUSTOM_TASKS.filter(t=>t.recurrenceTemplate&&t.owner===owner);
+  if(!arr.length)return '';
+  return `<div class="sec-title" style="margin-top:18px"><div class="sec-icon" style="background:var(--blue-l);color:var(--blue)"><i class="fa-solid fa-calendar-days"></i></div>Tarefas programadas / próximas aberturas</div><div class="card" style="padding:14px">${arr.map(t=>`<div class="upcoming-card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="upcoming-title">${esc(t.title)}</div><div style="font-size:10.5px;color:var(--text3);margin-top:4px">${esc(t.type||'Programada')}${t.period?' · '+esc(t.period):''} · próxima abertura: <strong>${esc(nextDueDate(t))}</strong></div></div>${urgencyBadge(t.criticality||'Normal')}</div><div style="font-size:11px;color:var(--text2);margin-top:6px">${esc(t.desc||'')}</div></div>`).join('')}</div>`;
+}
 function renderAssignedTasks(period='Hoje'){
  ensureRecurringOccurrences();
  const all=customVisibleTasks().filter(t=>t.owner===CURRENT_USER);
@@ -1708,7 +1678,7 @@ function renderAssignedTasks(period='Hoje'){
    }).join('')}`;
  }).join('');
 }
-function acceptCustomTask(id){const t=CUSTOM_TASKS.find(x=>x.id===id);if(!t)return;t.status='Aceita';t.acceptedAt=new Date().toLocaleString('pt-BR');const coordKey=t.createdBy||Object.keys(USERS).find(k=>USERS[k]?.n===USERS[t.owner]?.coord);const recipients=[coordKey,'debora'].filter(Boolean);LIVE_NOTIFS.unshift({msg:`${USERS[t.owner]?.n||t.owner} aceitou a tarefa “${t.title}” em ${t.acceptedAt}.`,level:t.criticality,owner:t.owner,at:t.acceptedAt,recipients});saveState();renderTarefas();}
+function acceptCustomTask(id){const t=CUSTOM_TASKS.find(x=>x.id===id);if(!t)return;t.status='Aceita';t.acceptedAt=new Date().toLocaleString('pt-BR');const coordKey=t.createdBy||Object.keys(USERS).find(k=>USERS[k]?.n===USERS[t.owner]?.coord);const recipients=[coordKey,'debora'].filter(Boolean);LIVE_NOTIFS.unshift({id:'notif_accept_'+t.id+'_'+Date.now(),msg:`${USERS[t.owner]?.n||t.owner} aceitou a tarefa “${t.title}” em ${t.acceptedAt}.`,level:t.criticality,owner:t.owner,at:t.acceptedAt,recipients,type:'aceite_tarefa',taskId:t.id,readBy:[]});saveState();renderTarefas();}
 
 
 function coordinatorKeyFor(ownerKey){
@@ -2119,7 +2089,7 @@ function clearNewEmployeePhoto(){NEW_EMPLOYEE_PHOTO='';const i=document.getEleme
 function ctab(n){if(n===4)brev();for(let i=0;i<5;i++){const el=document.getElementById('ct'+i);if(el)el.style.display=i===n?'':'none';}document.querySelectorAll('#ctabs .tab').forEach((t,i)=>t.classList.toggle('active',i===n));if(n===2&&!document.getElementById('ctemp-pass')?.value)generateTempPassword();}
 let INITIAL_EMPLOYEE_TASKS=[];
 let NEW_EMPLOYEE_PHOTO='';
-function generateTempPassword(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#';let out='Crd!';for(let i=0;i<8;i++)out+=chars[Math.floor(Math.random()*chars.length)];const e=document.getElementById('ctemp-pass');if(e)e.value=out;return out;}
+function generateTempPassword(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#';let out='Crd!';for(let i=0;i<7;i++)out+=chars[Math.floor(Math.random()*chars.length)];out+='7';const e=document.getElementById('ctemp-pass');if(e)e.value=out;return out;}
 function employeeTaskMode(){return document.querySelector('input[name="task-mode"]:checked')?.value||'manual';}
 function employeeTaskModeLabel(){const m=employeeTaskMode();return m==='manual'?`Inserção manual (${INITIAL_EMPLOYEE_TASKS.length} tarefa(s))`:m==='import'?'Importação de arquivo':'Colaborador vai cadastrar';}
 function employeeTaskModeChanged(){const m=employeeTaskMode();['manual','import','self'].forEach(x=>{const e=document.getElementById('task-mode-'+x);if(e)e.style.display=x===m?'':'none';});}
@@ -2169,7 +2139,7 @@ async function saveColab(){
     alert('O cadastro do colaborador será salvo, mas o acesso ao servidor não pôde ser criado: '+String(err.message||err));
   }
   const accessMap=JSON.parse(localStorage.getItem('crisdu_user_access')||'{}');
-  accessMap[key]={login:gv('clog'),provisionalPassword:provisional,firstAccessRequired:true,status:'Aguardando primeiro acesso',createdAt:new Date().toLocaleString('pt-BR')};
+  accessMap[key]={login:gv('clog'),firstAccessRequired:true,status:'Aguardando primeiro acesso',createdAt:new Date().toLocaleString('pt-BR')};
   localStorage.setItem('crisdu_user_access',JSON.stringify(accessMap));
 
   const taskMode=employeeTaskMode();
@@ -2631,16 +2601,13 @@ function renderDashMetrics(){
 
 // ─── CFG SISTEMA ───
 function renderCfgSys(){
-  mc().innerHTML=`<div class="page-header"><div class="page-title">Configurações do sistema</div><div class="page-sub">Acesso da Gerência</div></div>
-  <div class="card"><div class="sec-title">Ciclo de avaliações</div>
-    <div class="fg"><div class="fw"><div class="fl">Periodicidade</div><select><option>Trimestral</option><option>Semestral</option><option>Anual</option></select></div>
-    <div class="fw"><div class="fl">Prazo (dias para preencher)</div><input type="text" value="15"></div>
-    <div class="fw"><div class="fl">Notificar com antecedência</div><select><option>7 dias antes</option><option>15 dias antes</option></select></div></div>
-    <hr class="div">
-    <div class="sec-title">Notificações automáticas</div>
-    ${['Abertura do ciclo de avaliação','Prazo de desenvolvimento vencendo (3 dias)','Desenvolvimento concluída — notificar líder','Reunião de feedback pendente (7 dias)','PDI com prazo vencendo (7 dias)','PDI vencido — notificar Gerência','Nova tarefa criada pelo líder — notificar colaborador'].map(n=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px"><span>${n}</span><span class="badge b-green">Ativo</span></div>`).join('')}
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn btn-sm">Cancelar</button><button class="btn btn-p btn-sm"><i class="fa-solid fa-floppy-disk"></i>Salvar configurações</button></div>
-  </div>`;
+  if(CP!=='rh')return renderDenied();
+  const currentUrl=getApiUrl();
+  mc().innerHTML=`<div class="topbar-row"><div class="page-header" style="margin-bottom:0"><div class="page-title">Configurações do sistema</div><div class="page-sub">Servidor, sincronização e parâmetros gerais · acesso da Gerência</div></div><button class="btn btn-sm" onclick="forceServerSync()"><i class="fa-solid fa-arrows-rotate"></i>Sincronizar agora</button></div>
+  <div class="server-hero"><div class="server-grid"><div><div class="sec-title" style="margin-bottom:8px"><div class="sec-icon" style="background:var(--blue-l);color:var(--blue)"><i class="fa-solid fa-server"></i></div>Servidor Google Apps Script</div><div style="font-size:11.5px;color:var(--text2);line-height:1.55;margin-bottom:12px">Cole abaixo o endereço da implantação que termina em <strong>/exec</strong>. Use <strong>Testar conexão</strong> antes de salvar. Ao trocar de servidor, o sistema encerra a sessão atual para evitar gravar dados no ambiente errado.</div><div class="fw"><div class="fl">Link /exec do servidor</div><div class="server-url-box"><input id="cfg-api-url" value="${esc(currentUrl)}" placeholder="https://script.google.com/macros/s/.../exec"><button class="btn" onclick="testServerFromConfig()"><i class="fa-solid fa-plug-circle-check"></i>Testar conexão</button><button class="btn btn-p" onclick="saveServerUrlFromConfig()"><i class="fa-solid fa-floppy-disk"></i>Salvar link</button></div></div><div id="cfg-server-test-result" style="margin-top:10px"></div></div><div class="server-status-card"><div><div class="server-status-line"><span class="server-status-light" id="cfg-server-light"></span><span id="cfg-server-state">Aguardando teste</span></div><div id="cfg-server-detail" style="font-size:10.5px;color:var(--text3);margin-top:6px;line-height:1.5">Use o teste para validar o backend.</div></div><button class="btn btn-g" onclick="forceServerSync()" style="justify-content:center"><i class="fa-solid fa-database"></i>Testar gravação e leitura</button></div></div></div>
+  <div class="card"><div class="sec-title"><div class="sec-icon" style="background:var(--teal-l);color:var(--teal)"><i class="fa-solid fa-heart-pulse"></i></div>Diagnóstico da sincronização</div><div id="sync-diagnostics"></div><div class="ib" style="margin-top:12px"><i class="fa-solid fa-circle-info"></i><div><strong>Atualização automática:</strong> enquanto o usuário estiver logado, o navegador consulta a versão central a cada 6 segundos. Se outro usuário fizer uma alteração, o quadro é atualizado sem depender de F5. Gravações simultâneas são mescladas por registro no backend para impedir que uma sessão antiga apague a alteração de outra.</div></div></div>
+  <div class="card"><div class="sec-title">Ciclo de avaliações</div><div class="fg"><div class="fw"><div class="fl">Periodicidade</div><select><option>Trimestral</option><option>Semestral</option><option>Anual</option></select></div><div class="fw"><div class="fl">Prazo (dias para preencher)</div><input type="text" value="15"></div><div class="fw"><div class="fl">Notificar com antecedência</div><select><option>7 dias antes</option><option>15 dias antes</option></select></div></div><hr class="div"><div class="sec-title">Notificações automáticas</div>${['Abertura do ciclo de avaliação','Prazo de desenvolvimento vencendo (3 dias)','Desenvolvimento concluído — notificar líder','Reunião de feedback pendente (7 dias)','PDI com prazo vencendo (7 dias)','PDI vencido — notificar Gerência','Nova tarefa criada pelo líder — notificar colaborador'].map(n=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px"><span>${n}</span><span class="badge b-green">Ativo</span></div>`).join('')}</div>`;
+  updateSyncStatusUI();renderSyncDiagnostics();
 }
 
 // ─── DENIED ───
@@ -2845,7 +2812,7 @@ normalizeTaskRecurrenceRules();
 ensureRecurringOccurrences();
 
 // Se a aba já possui uma sessão autenticada, busca a base central antes de continuar.
-setTimeout(()=>{restoreServerSession();},0);
+setTimeout(async()=>{try{if(sessionStorage.getItem('crisdu_api_token'))await restoreServerSession();else{await testServerConnection(getApiUrl());renderLogin();}}catch(e){renderLogin();}},0);
 </script>
 </body>
 </html>

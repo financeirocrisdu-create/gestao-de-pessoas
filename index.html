@@ -2800,6 +2800,123 @@ const __openPDIBase=typeof openPDI==='function'?openPDI:null;
 if(__openPDIBase){openPDI=function(id){__openPDIBase(id);setTimeout(()=>{const m=document.getElementById('pdi-view-modal')?.querySelector('.modal-card');if(m&&!m.querySelector('.pdi-export-btn'))m.insertAdjacentHTML('beforeend',`<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn btn-p pdi-export-btn" onclick="exportPDIRecord('${id}')"><i class="fa-solid fa-file-export"></i>Exportar PDI</button></div>`);},0);};}
 
 
+
+// =====================================================
+// GESTÃO AO VIVO — V4.1
+// Painel gerencial orientado à equipe e atualização multiusuário.
+// =====================================================
+function managerScopeKeysV41(){
+  if(CP==='rh') return Object.keys(USERS).filter(k=>USERS[k]?.role==='colab'&&isCurrentEmployee(k));
+  if(CP==='gestor') return visibleTeamKeys().filter(k=>USERS[k]&&isCurrentEmployee(k));
+  return CURRENT_USER?[CURRENT_USER]:[];
+}
+function isFinalTaskStatusV41(st){return ['Concluída','Concluída com pendência','Não concluída'].includes(st||'');}
+function eventDateV41(v){return parsePtBrDateTime(v)||parsePtStamp(v)||null;}
+function isTodayV41(v){const d=eventDateV41(v);if(!d)return false;const n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate();}
+function fmtEventTimeV41(v){const d=eventDateV41(v);return d?d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):(v||'—');}
+function teamLiveMetricsV41(scope){
+  ensureRecurringOccurrences();
+  const tasks=customVisibleTasks().filter(t=>scope.includes(t.owner));
+  const waiting=tasks.filter(t=>t.status==='Aguardando aceite').length;
+  const accepted=tasks.filter(t=>t.status==='Aceita').length;
+  const overdue=tasks.filter(t=>taskIsOverdue(t)&&!isFinalTaskStatusV41(t.status)).length;
+  const doneToday=tasks.filter(t=>isFinalTaskStatusV41(t.status)&&isTodayV41(t.completedAt||t.lastExecution?.at)).length;
+  const logsToday=DEMAND_LOG.filter(r=>scope.includes(r.owner)&&isTodayV41(r.at));
+  const issuesToday=logsToday.filter(r=>r.status==='Concluída com pendência'||r.status==='Não concluída'||r.pendencia||r.dificuldade).length;
+  const improvementsToday=logsToday.filter(r=>r.melhoria).length;
+  return {tasks,waiting,accepted,overdue,doneToday,logsToday,issuesToday,improvementsToday};
+}
+function latestTeamActivityV41(scope,limit=10){
+  const rows=[];
+  (LIVE_NOTIFS||[]).forEach(n=>{
+    const rec=Array.isArray(n.recipients)?n.recipients:[];
+    const related=scope.includes(n.owner)||rec.includes(CURRENT_USER);
+    if(!related)return;
+    if(!['aceite_tarefa','execucao_tarefa','nova_tarefa','nova_demanda'].includes(n.type||'')&&!/aceitou|registrou a execução|nova tarefa|nova demanda/i.test(n.msg||''))return;
+    rows.push({at:n.at||'',owner:n.owner||'',text:n.msg||'Atualização da equipe',type:n.type||'evento',level:n.level||'Normal'});
+  });
+  // Garante que conclusões apareçam mesmo em bases antigas sem notificação estruturada.
+  DEMAND_LOG.filter(r=>scope.includes(r.owner)).forEach(r=>rows.push({at:r.at||'',owner:r.owner||'',text:`${USERS[r.owner]?.n||r.owner} finalizou “${r.task||'demanda'}”: ${r.status||'registrado'}.`,type:'execucao_tarefa',level:r.level||'Normal'}));
+  const seen=new Set();
+  return rows.filter(r=>{const k=[r.at,r.owner,r.text].join('|');if(seen.has(k))return false;seen.add(k);return true;}).sort((a,b)=>(eventDateV41(b.at)||new Date(0))-(eventDateV41(a.at)||new Date(0))).slice(0,limit);
+}
+function renderManagerLivePanelV41(){
+  const scope=managerScopeKeysV41(),m=teamLiveMetricsV41(scope),acts=latestTeamActivityV41(scope,10);
+  const personRows=scope.map(k=>{
+    const ts=m.tasks.filter(t=>t.owner===k),wait=ts.filter(t=>t.status==='Aguardando aceite').length,acc=ts.filter(t=>t.status==='Aceita').length,done=ts.filter(t=>isFinalTaskStatusV41(t.status)&&isTodayV41(t.completedAt||t.lastExecution?.at)).length;
+    const lg=m.logsToday.filter(r=>r.owner===k),issue=lg.filter(r=>r.pendencia||r.dificuldade||r.status==='Concluída com pendência'||r.status==='Não concluída').length;
+    const last=[...ts.map(t=>t.completedAt||t.acceptedAt||t.createdAt).filter(Boolean),...lg.map(r=>r.at).filter(Boolean)].sort((a,b)=>(eventDateV41(b)||new Date(0))-(eventDateV41(a)||new Date(0)))[0]||'';
+    return `<tr><td><strong>${esc(USERS[k]?.n||k)}</strong><div style="font-size:10px;color:var(--text3)">${esc(USERS[k]?.r||'')}</div></td><td><span class="badge ${wait?'b-amber':'b-gray'}">${wait}</span></td><td><span class="badge ${acc?'b-purple':'b-gray'}">${acc}</span></td><td><span class="badge ${done?'b-green':'b-gray'}">${done}</span></td><td><span class="badge ${issue?'b-red':'b-gray'}">${issue}</span></td><td style="font-size:10.5px;color:var(--text3)">${esc(fmtEventTimeV41(last))}</td><td><button class="btn btn-sm" onclick="go('demandasequipe');setTimeout(()=>{const s=document.getElementById('colab-demanda');if(s){s.value='${k}';trocarCarteira('${k}');updateTeamDemandPanel()}},30)"><i class="fa-solid fa-eye"></i>Ver</button></td></tr>`;
+  }).join('');
+  const feed=acts.length?acts.map(a=>{const tone=a.type==='execucao_tarefa'?'var(--green)':a.type==='aceite_tarefa'?'var(--purple)':'var(--blue)';const icon=a.type==='execucao_tarefa'?'fa-circle-check':a.type==='aceite_tarefa'?'fa-handshake':'fa-bell';return `<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><div style="width:30px;height:30px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;color:${tone};flex-shrink:0"><i class="fa-solid ${icon}"></i></div><div style="min-width:0;flex:1"><div style="font-size:11.5px;line-height:1.45">${esc(a.text)}</div><div style="font-size:9.5px;color:var(--text3);margin-top:2px">${esc(fmtEventTimeV41(a.at))}</div></div></div>`}).join(''):'<div style="padding:18px;text-align:center;color:var(--text3);font-size:11.5px">Nenhuma movimentação da equipe registrada ainda.</div>';
+  return `<div id="manager-live-v41">
+    <div class="topbar-row" style="margin:4px 0 10px"><div><div class="sec-title" style="margin:0"><div class="sec-icon" style="background:var(--green-l);color:var(--green)"><i class="fa-solid fa-satellite-dish"></i></div>Gestão ao vivo</div><div style="font-size:10.5px;color:var(--text3);margin:3px 0 0 30px">Atualização automática do servidor · tarefas, aceites e finalizações da equipe</div></div><div style="display:flex;gap:7px"><span class="badge b-green">Atualização automática</span><button class="btn btn-sm" onclick="forceManagerRefreshV41(this)"><i class="fa-solid fa-arrows-rotate"></i>Atualizar agora</button></div></div>
+    <div class="metrics" style="grid-template-columns:repeat(5,1fr)"><div class="metric"><div class="metric-val" style="color:var(--amber)">${m.waiting}</div><div class="metric-lbl">Aguardando aceite</div></div><div class="metric"><div class="metric-val" style="color:var(--purple)">${m.accepted}</div><div class="metric-lbl">Em execução</div></div><div class="metric"><div class="metric-val" style="color:var(--green)">${m.doneToday}</div><div class="metric-lbl">Concluídas hoje</div></div><div class="metric"><div class="metric-val" style="color:var(--red)">${m.issuesToday}</div><div class="metric-lbl">Atenções hoje</div></div><div class="metric"><div class="metric-val" style="color:var(--red)">${m.overdue}</div><div class="metric-lbl">Atrasadas</div></div></div>
+    <div style="display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.75fr);gap:16px;margin-bottom:16px">
+      <div class="card" style="padding:0;overflow:hidden"><div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between"><strong>Status da equipe hoje</strong><button class="btn btn-sm" onclick="go('mon')">Monitorar execução</button></div><table class="tbl"><thead><tr><th>Colaborador</th><th>Aguard.</th><th>Executando</th><th>Concluídas hoje</th><th>Atenções</th><th>Última ação</th><th></th></tr></thead><tbody>${personRows||'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">Nenhum colaborador vinculado.</td></tr>'}</tbody></table></div>
+      <div class="card" style="padding:0 14px;max-height:360px;overflow:auto"><div style="padding:12px 0 7px;position:sticky;top:0;background:#fff;z-index:1"><strong>Atividade recente</strong><div style="font-size:10px;color:var(--text3)">Aceites e execuções recebidos do servidor</div></div>${feed}</div>
+    </div>
+  </div>`;
+}
+async function forceManagerRefreshV41(btn){
+  const old=btn?.innerHTML;if(btn){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i>Atualizando...';}
+  try{await flushServerSync();await pullServerIfChanged(true);refreshRuntimeFromStorage(true)}catch(e){console.warn(e)}finally{if(btn){btn.disabled=false;btn.innerHTML=old||'<i class="fa-solid fa-arrows-rotate"></i>Atualizar agora';}}
+}
+
+// O painel inicial de liderança passa a refletir a operação da equipe, e não apenas cadastros/solicitações.
+const __renderHomeV41Base=renderHome;
+renderHome=function(p){
+  __renderHomeV41Base(p);
+  if(!(p==='gestor'||p==='rh'))return;
+  const main=mc(),header=main?.querySelector('.page-header');if(!main||!header)return;
+  const wrap=document.createElement('div');wrap.innerHTML=renderManagerLivePanelV41();
+  if(wrap.firstElementChild)header.insertAdjacentElement('afterend',wrap.firstElementChild);
+};
+
+// Dashboard: liderança entra, por padrão, na visão da equipe; escopo usa a hierarquia oficial TEAM_MAP.
+const __renderDashV41Base=renderDash;
+renderDash=function(p){
+  const prev={mode:document.getElementById('dash-mode')?.value,person:document.getElementById('dash-person')?.value,period:document.getElementById('dash-period')?.value,status:document.getElementById('dash-status')?.value,critical:document.getElementById('dash-critical')?.value};
+  __renderDashV41Base(p);
+  if(p==='gestor'||p==='rh'){
+    const mode=document.getElementById('dash-mode'),person=document.getElementById('dash-person');
+    if(mode)mode.value=prev.mode||'team';if(person)person.value=prev.person||'all';
+    const scope=document.getElementById('dash-scope');
+    if(scope&&!document.getElementById('dash-pipeline-v41'))scope.insertAdjacentHTML('afterend','<div id="dash-pipeline-v41" class="metrics" style="grid-template-columns:repeat(3,1fr)"><div class="metric"><div class="metric-val" id="dm-waiting" style="color:var(--amber)">0</div><div class="metric-lbl">Aguardando aceite</div></div><div class="metric"><div class="metric-val" id="dm-accepted" style="color:var(--purple)">0</div><div class="metric-lbl">Em execução</div></div><div class="metric"><div class="metric-val" id="dm-updated" style="color:var(--blue);font-size:14px">—</div><div class="metric-lbl">Última atualização</div></div></div>');
+    renderDashMetrics();
+  }
+};
+const __renderDashMetricsV41Original=renderDashMetrics;
+renderDashMetrics=function(){
+  const p=USERS[CURRENT_USER]?.role||'colab',mode=document.getElementById('dash-mode')?.value||((p==='gestor'||p==='rh')?'team':'me'),person=document.getElementById('dash-person')?.value||CURRENT_USER;
+  let scope=[CURRENT_USER];
+  if(mode==='team'){
+    if(person!=='all')scope=[person];
+    else if(p==='gestor')scope=visibleTeamKeys().filter(isCurrentEmployee);
+    else if(p==='rh')scope=Object.keys(USERS).filter(k=>USERS[k]?.role==='colab'&&isCurrentEmployee(k));
+  }
+  // Executa a lógica visual original; para gestor, normaliza temporariamente coord para não perder pessoas vinculadas via TEAM_MAP.
+  const cur=USERS[CURRENT_USER],backup=[];
+  if(mode==='team'&&p==='gestor'&&cur){scope.forEach(k=>{if(USERS[k]){backup.push([k,USERS[k].coord]);USERS[k].coord=cur.n;}});}
+  try{__renderDashMetricsV41Original();}finally{backup.forEach(([k,v])=>{if(USERS[k])USERS[k].coord=v;});}
+  const tasks=customVisibleTasks().filter(t=>scope.includes(t.owner));
+  const waiting=tasks.filter(t=>t.status==='Aguardando aceite').length,accepted=tasks.filter(t=>t.status==='Aceita').length;
+  const w=document.getElementById('dm-waiting'),a=document.getElementById('dm-accepted'),u=document.getElementById('dm-updated');if(w)w.textContent=waiting;if(a)a.textContent=accepted;if(u){const last=sessionStorage.getItem('crisdu_last_server_pull')||sessionStorage.getItem('crisdu_last_server_sync')||'';u.textContent=last?new Date(last).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';}
+};
+
+// Monitoramento passa a mostrar também o pipeline atual, antes da finalização.
+function renderMonitorPipelineV41(){
+  const scope=managerScopeKeysV41(),m=teamLiveMetricsV41(scope);
+  const rows=scope.map(k=>{const ts=m.tasks.filter(t=>t.owner===k),wait=ts.filter(t=>t.status==='Aguardando aceite').length,acc=ts.filter(t=>t.status==='Aceita').length,late=ts.filter(t=>taskIsOverdue(t)&&!isFinalTaskStatusV41(t.status)).length,done=ts.filter(t=>isFinalTaskStatusV41(t.status)&&isTodayV41(t.completedAt||t.lastExecution?.at)).length;return `<tr><td><strong>${esc(USERS[k]?.n||k)}</strong></td><td>${wait}</td><td>${acc}</td><td>${done}</td><td>${late}</td><td><button class="btn btn-sm" onclick="go('demandasequipe');setTimeout(()=>{const s=document.getElementById('colab-demanda');if(s){s.value='${k}';trocarCarteira('${k}');updateTeamDemandPanel()}},30)">Abrir quadro</button></td></tr>`}).join('');
+  return `<div id="monitor-pipeline-v41"><div class="metrics" style="grid-template-columns:repeat(4,1fr)"><div class="metric"><div class="metric-val" style="color:var(--amber)">${m.waiting}</div><div class="metric-lbl">Aguardando aceite</div></div><div class="metric"><div class="metric-val" style="color:var(--purple)">${m.accepted}</div><div class="metric-lbl">Em execução</div></div><div class="metric"><div class="metric-val" style="color:var(--green)">${m.doneToday}</div><div class="metric-lbl">Concluídas hoje</div></div><div class="metric"><div class="metric-val" style="color:var(--red)">${m.overdue}</div><div class="metric-lbl">Atrasadas</div></div></div><div class="card" style="padding:0;overflow:hidden"><div style="padding:12px 16px;border-bottom:1px solid var(--border)"><strong>Pipeline atual da equipe</strong><div style="font-size:10px;color:var(--text3)">Reflete aceite, execução e conclusão sem aguardar fechamento da demanda</div></div><table class="tbl"><thead><tr><th>Colaborador</th><th>Aguardando</th><th>Executando</th><th>Concluídas hoje</th><th>Atrasadas</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text3)">Nenhuma pessoa no escopo.</td></tr>'}</tbody></table></div></div>`;
+}
+const __renderMonV41Base=renderMon;
+renderMon=function(){__renderMonV41Base();if(!(CP==='gestor'||CP==='rh'))return;const main=mc();if(!main)return;const filters=main.querySelector('.card');if(filters){const w=document.createElement('div');w.innerHTML=renderMonitorPipelineV41();const node=w.firstElementChild;if(node)filters.insertAdjacentElement('afterend',node);}};
+
+// Resposta mais rápida ao servidor sem perder a proteção da fila.
+scheduleServerFlush=function(delay=160){clearTimeout(__serverSyncTimer);__serverSyncTimer=setTimeout(flushServerSync,delay);};
+startServerPolling=function(){stopServerPolling();if(!sessionStorage.getItem('crisdu_api_token'))return;__serverPollTimer=setInterval(()=>pullServerIfChanged(false),5000);updateSyncStatusUI();};
+
 function normalizeTaskRecurrenceRules(){
   let changed=false;
   CUSTOM_TASKS.forEach(t=>{

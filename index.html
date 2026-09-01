@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#0B4F8A">
 <title>Gestão de Pessoas · Financeiro Central</title>
 <style>
@@ -119,16 +122,26 @@ body{overflow:hidden}button,input,select,textarea{font:inherit}button{cursor:poi
 .vacation-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
 @media(max-width:700px){.request-summary{grid-template-columns:1fr}.vacation-notice{grid-template-columns:36px 1fr}.vacation-actions{grid-column:1/3;justify-content:flex-start}}
 
+/* V6.2 — seletor explícito de solicitações e trava de gravação */
+.request-kind-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:7px}
+.request-kind{border:1px solid var(--line);background:#fff;border-radius:14px;padding:14px 12px;text-align:left;color:var(--ink);display:grid;grid-template-columns:32px 1fr;column-gap:8px;align-items:center;transition:.16s}
+.request-kind>span{grid-row:1/3;font-size:22px}.request-kind b{font-size:12px}.request-kind small{font-size:9px;color:var(--muted);margin-top:2px}
+.request-kind:hover{border-color:#9CC3DF;background:#F8FBFE}.request-kind.active{border-color:var(--blue2);background:var(--sky);box-shadow:0 0 0 3px rgba(23,105,166,.08)}
+.request-selected-read{border:1px solid #BFD8E9;background:#F3F8FC;color:var(--blue);padding:11px 13px;border-radius:12px;font-size:12px}
+button:disabled{opacity:.55;cursor:not-allowed;transform:none!important}
+@media(max-width:620px){.request-kind-grid{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
 <script>
 const APP_CONFIG = {
-  VERSION: '6.1.0',
+  VERSION: '6.2.0',
   DEFAULT_API_URL: "https://script.google.com/macros/s/AKfycbzXEFTcaUYvYhs8E1m6VRUUUire4VwxB12wQQ3-CYho8mtn7jWMBWduFWTHZK5PVeJv/exec",
   API_STORAGE_KEY: 'crisdu_api_url_v5',
   TOKEN_KEY: 'crisdu_api_token_v5',
-  POLL_MS: 7000
+  POLL_MS: 7000,
+  BUILD_ID: '20260901-1333'
 };
 
 const STATIC_USERS = {
@@ -146,7 +159,7 @@ const TEAM_MAP = {bruna:['leticia','franciele','estefani','nadia'],carolini:[],n
 
 const state = {
   session:null, users:{...STATIC_USERS}, tasks:[], requests:[], feedbacks:[], pdis:[], events:[], notifications:[], audit:[],
-  version:0, page:'dashboard', taskView:'table', taskFilter:'all', peopleFilter:'active', search:'', poll:null, syncing:false, serverState:'idle'
+  version:0, page:'dashboard', taskView:'table', taskFilter:'all', peopleFilter:'active', search:'', poll:null, syncing:false, savingTask:false, serverState:'idle'
 };
 
 const $ = s => document.querySelector(s);
@@ -159,6 +172,11 @@ const fmtDateTime = v => !v ? '—' : new Date(v).toLocaleString('pt-BR',{dateSt
 const clamp = (n,a,b)=>Math.min(b,Math.max(a,Number(n)||0));
 
 function apiUrl(){ return APP_CONFIG.DEFAULT_API_URL; }
+
+try{
+  ['crisdu_api_url','crisdu_api_url_v5','crisdu_api_url_v6','crisdu_api_url_v61','crisdu_api_url_v62'].forEach(k=>localStorage.removeItem(k));
+}catch(e){}
+
 function token(){ return sessionStorage.getItem(APP_CONFIG.TOKEN_KEY)||''; }
 
 function toast(msg,type='') {
@@ -419,8 +437,9 @@ function taskOwnerOptions(selected='') {
   return keys.filter((v,i,a)=>a.indexOf(v)===i).map(k=>`<option value="${k}" ${selected===k?'selected':''}>${esc(user(k).name)} · ${esc(user(k).team||user(k).title)}</option>`).join('');
 }
 function openTaskModal(id='') {
-  const t=state.tasks.find(x=>x.id===id)||{id:'',title:'',description:'',owner:currentRole()==='colab'?currentUser():(teamKeys()[0]||currentUser()),status:'Não iniciada',priority:'Média',progress:0,startDate:new Date().toISOString().slice(0,10),dueDate:'',category:'Rotina',recurrence:'Não',blocker:'',difficulty:'',notes:''};
-  const canManage=isLeader()||t.owner===currentUser();
+  const isNew=!id,draftId=id||uid();
+  const existing=state.tasks.find(x=>x.id===id);
+  const t=existing||{id:draftId,title:'',description:'',owner:currentRole()==='colab'?currentUser():(teamKeys()[0]||currentUser()),status:'Não iniciada',priority:'Média',progress:0,startDate:new Date().toISOString().slice(0,10),dueDate:'',category:'Rotina',recurrence:'Não',result:'',blocker:'',difficulty:'',notes:''};
   showModal('Atividade',`<div class="row"><div class="field"><label>Título *</label><input id="t-title" value="${esc(t.title)}"></div><div class="field"><label>Responsável *</label><select id="t-owner" ${currentRole()==='colab'?'disabled':''}>${taskOwnerOptions(t.owner)}</select></div></div>
   <div class="field"><label>Descrição</label><textarea id="t-desc">${esc(t.description)}</textarea></div>
   <div class="row"><div class="field"><label>Status</label><select id="t-status">${['Não iniciada','Em andamento','Aguardando','Bloqueada','Concluída'].map(s=>`<option ${t.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
@@ -430,14 +449,24 @@ function openTaskModal(id='') {
   <div class="row"><div class="field"><label>Recorrência</label><select id="t-rec">${['Não','Diária','Semanal','Quinzenal','Mensal'].map(s=>`<option ${String(t.recurrence||'Não')===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="field"><label>Resultado / evidência</label><input id="t-result" value="${esc(t.result||'')}" placeholder="Link, protocolo ou resultado final"></div></div>
   <div class="row"><div class="field"><label>Bloqueio / dependência</label><input id="t-blocker" value="${esc(t.blocker||'')}" placeholder="Descreva impedimentos"></div><div class="field"><label>Dificuldade</label><input id="t-difficulty" value="${esc(t.difficulty||'')}" placeholder="Ex.: baixa, média, alta ou detalhe"></div></div>
   <div class="field"><label>Observações</label><textarea id="t-notes">${esc(t.notes||'')}</textarea></div>`,
-  `${t.id&&canDeleteTask(t)?`<button class="btn btn-danger" style="margin-right:auto" onclick="deleteTask('${t.id}');closeModal()">Excluir</button>`:''}<button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveTask('${t.id}')">Salvar atividade</button>`,true);
+  `${!isNew&&canDeleteTask(t)?`<button class="btn btn-danger" style="margin-right:auto" onclick="deleteTask('${t.id}');closeModal()">Excluir</button>`:''}<button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="task-save-btn" onclick="saveTask('${draftId}')">Salvar atividade</button>`,true);
 }
 async function saveTask(id='') {
-  const title=$('#t-title').value.trim(); if(!title)return toast('Informe o título da atividade.','err');
+  if(state.savingTask)return;
+  const title=$('#t-title')?.value.trim();if(!title)return toast('Informe o título da atividade.','err');
+  state.savingTask=true;
+  const btn=$('#task-save-btn');if(btn){btn.disabled=true;btn.textContent='Salvando…';}
   const old=state.tasks.find(x=>x.id===id);
   const payload={id:id||uid(),title,description:$('#t-desc').value.trim(),owner:$('#t-owner').value,createdBy:old?.createdBy||currentUser(),status:$('#t-status').value,priority:$('#t-priority').value,progress:clamp($('#t-progress').value,0,100),startDate:$('#t-start').value,dueDate:$('#t-due').value,category:$('#t-cat').value.trim(),recurrence:$('#t-rec').value,result:$('#t-result').value.trim(),blocker:$('#t-blocker').value.trim(),difficulty:$('#t-difficulty').value.trim(),notes:$('#t-notes').value.trim(),createdAt:old?.createdAt||nowIso(),updatedAt:nowIso()};
   if(payload.status==='Concluída')payload.progress=100;
-  try{const j=await api('saveTask',{task:payload}); applySnapshot(j.snapshot); closeModal(); toast(old?'Atividade atualizada e gestão notificada.':'Atividade criada e responsáveis notificados.','ok'); renderPage();}catch(e){}
+  try{
+    const j=await api('saveTask',{task:payload});
+    applySnapshot(j.snapshot);closeModal();
+    toast(old?'Atividade atualizada e gestão notificada.':'Atividade criada uma única vez e responsáveis notificados.','ok');
+    renderPage();
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='Salvar atividade';}
+  }finally{state.savingTask=false;}
 }
 async function deleteTask(id) {
   if(!confirm('Excluir esta atividade? A ação ficará registrada na auditoria.'))return;
@@ -465,7 +494,7 @@ function renderRequests() {
     <div><b>${rows.filter(r=>r.type==='Horas extras'&&r.status==='Aprovada').length}</b><span>Horas extras aprovadas</span></div>
   </div>
   <div class="card">${rows.length?`<div style="overflow:auto"><table class="task-table"><thead><tr><th>Tipo</th><th>Solicitação</th><th>Solicitante</th><th>Período / Data</th><th>Status</th><th>Prioridade</th><th>Atualização</th><th>Ações</th></tr></thead><tbody>${rows.map(r=>`<tr>
-    <td><span class="request-type">${requestTypeIcon(r.type)} ${esc(r.type)}</span></td>
+    <td><span class="request-type">${requestTypeIcon(normalizeRequestTypeUI(r.type))} ${esc(normalizeRequestTypeUI(r.type))}</span></td>
     <td><div class="task-title">${esc(r.title)}</div><div class="task-desc">${esc(requestExtraSummary(r))}</div></td>
     <td>${esc(user(r.requester).name)}</td>
     <td>${r.type==='Férias'?`${fmtDate(r.startDate)} a ${fmtDate(r.endDate)}`:r.type==='Horas extras'?fmtDate(r.overtimeDate):'—'}</td>
@@ -486,24 +515,41 @@ function requestRecipientDefault(){
   if(currentRole()==='colab')return user(currentUser()).manager||'bruna';
   return currentUser();
 }
+function normalizeRequestTypeUI(type){return type==='Geral'?'Outros':(type||'Outros');}
+function requestTypeButtons(selected){
+  const t=normalizeRequestTypeUI(selected);
+  return `<div class="request-kind-grid">
+    <button type="button" class="request-kind ${t==='Férias'?'active':''}" onclick="selectRequestType('Férias')"><span>🏖</span><b>Férias</b><small>Período e dias</small></button>
+    <button type="button" class="request-kind ${t==='Horas extras'?'active':''}" onclick="selectRequestType('Horas extras')"><span>⏱</span><b>Horas extras</b><small>Data, horas e motivo</small></button>
+    <button type="button" class="request-kind ${t==='Outros'?'active':''}" onclick="selectRequestType('Outros')"><span>↗</span><b>Outros</b><small>Demais solicitações</small></button>
+  </div>`;
+}
+function selectRequestType(type){
+  const sel=$('#r-type');if(sel)sel.value=type;
+  document.querySelectorAll('.request-kind').forEach(b=>b.classList.toggle('active',b.querySelector('b')?.textContent===type));
+  renderRequestFields();
+}
 function openRequestModal(id='') {
   const old=state.requests.find(x=>x.id===id);
-  const r=old||{id:'',type:'Geral',title:'',description:'',requester:currentUser(),recipient:requestRecipientDefault(),status:'Pendente de aprovação',priority:'Média',startDate:'',endDate:'',days:0,overtimeDate:'',hours:'',startTime:'',endTime:'',reason:'',managerNote:''};
+  const r=old?{...old,type:normalizeRequestTypeUI(old.type)}:{id:'',type:'Outros',title:'',description:'',requester:currentUser(),recipient:requestRecipientDefault(),status:'Pendente de aprovação',priority:'Média',startDate:'',endDate:'',days:0,overtimeDate:'',hours:'',startTime:'',endTime:'',reason:'',managerNote:''};
   const recipients=Object.keys(state.users).filter(k=>k!==currentUser()&&state.users[k].active!==false&&['gestor','rh'].includes(state.users[k].role));
   const canEdit=!old || r.requester===currentUser() || currentRole()==='rh';
   showModal('Solicitação',`
-  <div class="row"><div class="field"><label>Tipo de solicitação</label><select id="r-type" onchange="renderRequestFields()" ${old?'disabled':''}><option ${r.type==='Geral'?'selected':''}>Geral</option><option ${r.type==='Horas extras'?'selected':''}>Horas extras</option><option ${r.type==='Férias'?'selected':''}>Férias</option></select></div>
-  <div class="field"><label>Destinatário / aprovador</label><select id="r-rec" ${canEdit?'':'disabled'}>${recipients.map(k=>`<option value="${k}" ${r.recipient===k?'selected':''}>${esc(user(k).name)}</option>`).join('')}</select></div></div>
-  <div class="field"><label>Título *</label><input id="r-title" value="${esc(r.title)}" ${canEdit?'':'disabled'}></div>
+  <div class="field"><label>O que você deseja solicitar?</label>${old?`<div class="request-selected-read">${requestTypeIcon(r.type)} <b>${esc(r.type)}</b></div>`:requestTypeButtons(r.type)}</div>
+  <select id="r-type" class="hidden"><option>Férias</option><option>Horas extras</option><option>Outros</option></select>
+  <div class="row"><div class="field"><label>Destinatário / aprovador</label><select id="r-rec" ${canEdit?'':'disabled'}>${recipients.map(k=>`<option value="${k}" ${r.recipient===k?'selected':''}>${esc(user(k).name)}</option>`).join('')}</select></div>
+  <div class="field"><label>Status atual</label><div class="readbox"><span class="pill ${requestStatusClass(r.status)}">${esc(r.status)}</span></div></div></div>
+  <div class="field"><label>Título *</label><input id="r-title" value="${esc(r.title)}" ${canEdit?'':'disabled'} placeholder="${r.type==='Férias'?'Ex.: Férias de setembro':r.type==='Horas extras'?'Ex.: Fechamento mensal':'Assunto da solicitação'}"></div>
   <div id="r-dynamic"></div>
   <div class="field"><label>Descrição complementar</label><textarea id="r-desc" ${canEdit?'':'disabled'}>${esc(r.description||'')}</textarea></div>
-  ${old?`<div class="row"><div class="field"><label>Status</label><div class="readbox"><span class="pill ${requestStatusClass(r.status)}">${esc(r.status)}</span></div></div><div class="field"><label>Decidido por</label><div class="readbox">${esc(user(r.decidedBy).name||'—')}</div></div></div>
+  ${old?`<div class="row"><div class="field"><label>Decidido por</label><div class="readbox">${esc(user(r.decidedBy).name||'—')}</div></div><div class="field"><label>Data da decisão</label><div class="readbox">${fmtDateTime(r.decidedAt)}</div></div></div>
   <div class="field"><label>Observação da gestão</label><div class="readbox">${esc(r.managerNote||'—')}</div></div>`:''}`,
   `<button class="btn btn-outline" onclick="closeModal()">Fechar</button>${canEdit&&!['Aprovada','Rejeitada','Cancelada'].includes(r.status)?`<button class="btn btn-primary" onclick="saveRequest('${r.id}')">Salvar solicitação</button>`:''}`,true);
+  $('#r-type').value=r.type;
   setTimeout(()=>renderRequestFields(r),0);
 }
 function renderRequestFields(existing){
-  const type=$('#r-type')?.value||existing?.type||'Geral',r=existing||state.requests.find(x=>x.id===window.__openRequestId)||{};
+  const type=normalizeRequestTypeUI($('#r-type')?.value||existing?.type||'Outros'),r=existing||{};
   const box=$('#r-dynamic');if(!box)return;
   if(type==='Férias'){
     box.innerHTML=`<div class="request-special vacation-special"><div class="request-special-title">🏖 Solicitação de férias</div>
@@ -515,12 +561,12 @@ function renderRequestFields(existing){
       <div class="row"><div class="field"><label>Horário inicial</label><input id="r-start-time" type="time" value="${esc(r.startTime||'')}"></div><div class="field"><label>Horário final</label><input id="r-end-time" type="time" value="${esc(r.endTime||'')}"></div></div>
       <div class="field"><label>Justificativa *</label><textarea id="r-reason" placeholder="Descreva a necessidade das horas extras">${esc(r.reason||'')}</textarea></div></div>`;
   }else{
-    box.innerHTML=`<div class="field"><label>Motivo / assunto</label><input id="r-reason" value="${esc(r.reason||'')}"></div>`;
+    box.innerHTML=`<div class="request-special"><div class="request-special-title">↗ Outra solicitação</div><div class="field"><label>Motivo / assunto</label><input id="r-reason" value="${esc(r.reason||'')}" placeholder="Ex.: alteração cadastral, documento, ajuste de rotina..."></div></div>`;
   }
 }
 function updateVacationDays(){const n=daysBetweenInclusive($('#r-start')?.value,$('#r-end')?.value),b=$('#r-days-box');if(b)b.textContent=n+' dias';}
 async function saveRequest(id='') {
-  const old=state.requests.find(x=>x.id===id),type=$('#r-type').value,title=$('#r-title').value.trim();if(!title)return toast('Informe o título.','err');
+  const old=state.requests.find(x=>x.id===id),type=normalizeRequestTypeUI($('#r-type').value),title=$('#r-title').value.trim();if(!title)return toast('Informe o título.','err');
   const req={id:id||uid(),type,title,description:$('#r-desc').value.trim(),requester:old?.requester||currentUser(),recipient:$('#r-rec').value,status:old?.status||'Pendente de aprovação',priority:type==='Férias'?'Média':type==='Horas extras'?'Alta':'Média',
     startDate:type==='Férias'?$('#r-start').value:'',endDate:type==='Férias'?$('#r-end').value:'',days:type==='Férias'?daysBetweenInclusive($('#r-start').value,$('#r-end').value):0,
     overtimeDate:type==='Horas extras'?$('#r-ot-date').value:'',hours:type==='Horas extras'?Number($('#r-hours').value||0):0,startTime:type==='Horas extras'?$('#r-start-time').value:'',endTime:type==='Horas extras'?$('#r-end-time').value:'',
@@ -680,7 +726,7 @@ function renderAudit() {
 function renderSettings() {
   $('#top-title').textContent='Configurações'; $('#top-sub').textContent='Servidor e segurança';
   $('#page').innerHTML=pageHead('Configurações','O servidor é global e já vem configurado para todos os usuários.')+
-  `<div class="grid two"><div class="card"><div class="card-head"><div><h3>Servidor central</h3><span>Google Apps Script Web App</span></div></div><div class="card-pad"><div class="field"><label>URL global /exec</label><input value="${esc(APP_CONFIG.DEFAULT_API_URL)}" readonly></div><div style="display:flex;gap:8px"><button class="btn btn-primary" onclick="testGlobalServer()">Testar conexão</button><button class="btn btn-outline" onclick="pollNow(true)">Sincronizar agora</button></div><div id="server-test-result" class="small muted" style="margin-top:12px">Esta URL é usada automaticamente por todos os logins e novos usuários.</div></div></div>
+  `<div class="grid two"><div class="card"><div class="card-head"><div><h3>Servidor central</h3><span>Google Apps Script Web App</span></div></div><div class="card-pad"><div class="field"><label>URL global /exec</label><input value="${esc(APP_CONFIG.DEFAULT_API_URL)}" readonly></div><div style="display:flex;gap:8px"><button class="btn btn-primary" onclick="testGlobalServer()">Testar conexão</button><button class="btn btn-outline" onclick="pollNow(true)">Sincronizar agora</button></div><div id="server-test-result" class="small muted" style="margin-top:12px">Servidor obrigatório e global. Nenhum login, navegador ou novo usuário precisa cadastrar a URL /exec.</div></div></div>
   <div class="card"><div class="card-head"><div><h3>Segurança</h3><span>Sessão e senha</span></div></div><div class="card-pad"><button class="btn btn-outline" onclick="openChangePassword()">Alterar minha senha</button><p class="small muted">As senhas ficam somente no servidor, armazenadas como hash com salt. O HTML não contém senhas.</p></div></div></div>`;
 }
 async function testGlobalServer(){
@@ -764,7 +810,7 @@ function renderLogin() {
       GRUPO<br>CRISDU
     </div>
   </section>
-  <section class="login-side"><div class="login-card"><div class="login-logo"><div class="logo-mark">RH</div><div><b>Gestão de Pessoas</b><div class="small muted">Financeiro Central · V5 Integrado</div></div></div><h1>Bem-vindo(a)</h1><p class="lead">Acesse sua conta para continuar.</p><div class="field"><label>Usuário</label><input id="login-user" autocomplete="username" placeholder="Ex.: leticia.medeiros"></div><div class="field"><label>Senha</label><input id="login-pass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()"></div><div id="login-error" class="login-error"></div><div class="login-actions"><button class="btn btn-primary" onclick="login()">Entrar</button></div><div class="server-line"><div class="small"><span class="status-dot" id="login-dot"></span><span id="login-server">Servidor</span></div><button class="btn btn-outline btn-sm" onclick="testServerLogin()">Testar conexão</button></div></div></section></div><div class="toast-zone" id="toast-zone"></div></div>`;
+  <section class="login-side"><div class="login-card"><div class="login-logo"><div class="logo-mark">RH</div><div><b>Gestão de Pessoas</b><div class="small muted">Financeiro Central · V6.2</div></div></div><h1>Bem-vindo(a)</h1><p class="lead">Acesse sua conta para continuar.</p><div class="field"><label>Usuário</label><input id="login-user" autocomplete="username" placeholder="Ex.: leticia.medeiros"></div><div class="field"><label>Senha</label><input id="login-pass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()"></div><div id="login-error" class="login-error"></div><div class="login-actions"><button class="btn btn-primary" onclick="login()">Entrar</button></div><div class="server-line"><div class="small"><span class="status-dot" id="login-dot"></span><span id="login-server">Servidor global</span><div style="font-size:9px;color:var(--muted);margin-top:3px">Conexão única para todos os usuários · build ${APP_CONFIG.BUILD_ID}</div></div><button class="btn btn-outline btn-sm" onclick="testServerLogin()">Testar conexão</button></div></div></section></div><div class="toast-zone" id="toast-zone"></div></div>`;
   setTimeout(testServerLogin,250);
 }
 async function testServerLogin() {

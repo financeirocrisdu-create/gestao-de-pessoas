@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0B4F8A">
+<title>Gestão de Pessoas · Financeiro Central</title>
+<style>
+:root{
+  --navy:#073B66;--blue:#0B4F8A;--blue2:#1769A6;--sky:#EAF3FB;--sky2:#F4F8FC;
+  --ink:#183042;--muted:#667788;--line:#D9E4ED;--bg:#EEF3F7;--card:#FFFFFF;
+  --green:#15803D;--green-bg:#ECFDF3;--amber:#B45309;--amber-bg:#FFF7E8;
+  --red:#B42318;--red-bg:#FFF0EE;--violet:#6D28D9;--violet-bg:#F3EEFF;
+  --shadow:0 10px 35px rgba(15,55,85,.10);--shadow-sm:0 4px 15px rgba(15,55,85,.08);
+  --r:18px;--r2:12px;--sidebar:252px;--top:68px;
+}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
+body{overflow:hidden}button,input,select,textarea{font:inherit}button{cursor:pointer}
+.hidden{display:none!important}.muted{color:var(--muted)}.small{font-size:12px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+#app{height:100vh}.login-page{height:100vh;display:grid;grid-template-columns:1.05fr .95fr;background:#fff}
+.login-hero{position:relative;overflow:hidden;background:linear-gradient(145deg,#062E50,#0B4F8A 58%,#1769A6);color:#fff;padding:56px;display:flex;flex-direction:column;justify-content:center}
+.login-hero .brand-lockup{transform:translateY(-2%);max-width:620px}
+.login-hero .crisdu-login-logo{position:absolute;left:56px;bottom:56px;z-index:2}
+.login-hero:before,.login-hero:after{content:"";position:absolute;border-radius:999px;background:rgba(255,255,255,.08)}
+.login-hero:before{width:520px;height:520px;right:-210px;top:-170px}.login-hero:after{width:380px;height:380px;left:-180px;bottom:-160px}
+.brand-lockup{position:relative;z-index:1}.brand-kicker{font-size:13px;text-transform:uppercase;letter-spacing:.18em;opacity:.75;font-weight:800}
+.brand-title{font-size:48px;line-height:1.05;font-weight:850;letter-spacing:-1.8px;margin-top:14px;max-width:600px}
+.brand-copy{font-size:16px;line-height:1.65;opacity:.86;max-width:580px;margin-top:20px}
+.hero-points{position:relative;z-index:1;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.hero-point{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);backdrop-filter:blur(6px);border-radius:16px;padding:16px}
+.hero-point b{display:block;font-size:14px;margin-bottom:5px}.hero-point span{font-size:12px;opacity:.75}
+.login-side{display:flex;align-items:center;justify-content:center;padding:42px}.login-card{width:min(460px,100%);background:#fff}
+.login-logo{display:flex;align-items:center;gap:12px;margin-bottom:34px}.logo-mark{width:44px;height:44px;border-radius:14px;background:linear-gradient(145deg,var(--blue),#1D6FA8);display:grid;place-items:center;color:#fff;font-weight:900;box-shadow:var(--shadow-sm)}
+.login-card h1{font-size:28px;margin:0 0 7px;letter-spacing:-.7px}.login-card .lead{margin:0 0 26px;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:7px;margin-bottom:15px}.field label{font-size:12px;font-weight:800;color:#3E5364}.field input,.field select,.field textarea{border:1px solid var(--line);border-radius:12px;padding:12px 13px;background:#fff;color:var(--ink);outline:none;transition:.18s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#7DB4DB;box-shadow:0 0 0 4px rgba(23,105,166,.10)}.field textarea{min-height:94px;resize:vertical}
+.row{display:flex;gap:12px}.row>*{flex:1}.btn{border:0;border-radius:12px;padding:11px 14px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.18s}
+.btn-primary{background:linear-gradient(145deg,var(--blue),var(--blue2));color:#fff;box-shadow:0 7px 18px rgba(11,79,138,.18)}.btn-primary:hover{transform:translateY(-1px)}
+.btn-soft{background:var(--sky);color:var(--blue)}.btn-outline{background:#fff;border:1px solid var(--line);color:var(--ink)}.btn-danger{background:var(--red-bg);color:var(--red)}.btn-sm{padding:7px 10px;border-radius:9px;font-size:12px}
+.login-actions{display:flex;gap:10px;margin-top:18px}.login-actions .btn-primary{flex:1}
+.login-error{min-height:20px;color:var(--red);font-size:12px;margin-top:8px}.server-line{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.status-dot{width:9px;height:9px;border-radius:50%;background:#94A3B8;display:inline-block;margin-right:6px}.status-dot.online{background:#22C55E;box-shadow:0 0 0 5px rgba(34,197,94,.11)}.status-dot.error{background:#EF4444}
+.shell{height:100vh;display:grid;grid-template-columns:var(--sidebar) 1fr;grid-template-rows:var(--top) 1fr}
+.sidebar{grid-row:1/3;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 14px;z-index:20}
+.side-brand{display:flex;align-items:center;gap:11px;padding:3px 8px 20px}.side-brand .logo-mark{width:38px;height:38px;border-radius:12px}.side-brand b{display:block}.side-brand span{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.nav{display:flex;flex-direction:column;gap:5px}.nav button{border:0;background:transparent;border-radius:11px;padding:11px 12px;text-align:left;color:#4E6170;font-weight:750;display:flex;gap:11px;align-items:center}
+.nav button:hover{background:var(--sky2);color:var(--blue)}.nav button.active{background:var(--sky);color:var(--blue)}.nav-ico{width:20px;text-align:center}
+.side-footer{margin-top:auto;border-top:1px solid var(--line);padding-top:14px}.mini-user{display:flex;align-items:center;gap:10px;padding:8px}.avatar{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-weight:900;background:var(--sky);color:var(--blue);flex:0 0 auto}.avatar.lg{width:46px;height:46px;border-radius:14px}.mini-user b{display:block;font-size:12px}.mini-user span{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+.topbar{grid-column:2;display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:0 24px;z-index:18}
+.top-title{font-weight:850;font-size:16px}.top-sub{font-size:11px;color:var(--muted);margin-top:2px}.top-spacer{margin-left:auto}
+.sync-pill{border:1px solid var(--line);background:#fff;padding:7px 10px;border-radius:999px;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}.sync-pill.online{color:var(--green);background:var(--green-bg);border-color:#B7E4C7}.sync-pill.syncing{color:var(--amber);background:var(--amber-bg)}.sync-pill.error{color:var(--red);background:var(--red-bg)}
+.icon-btn{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:#fff;color:#526474;display:grid;place-items:center;position:relative}.badge-count{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:999px;background:#E5484D;color:#fff;font-size:10px;font-weight:900;display:grid;place-items:center;padding:0 5px;border:2px solid #fff}
+.main{grid-column:2;grid-row:2;overflow:auto;padding:24px}.page{max-width:1500px;margin:0 auto}.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px}.page-head h2{margin:0;font-size:25px;letter-spacing:-.65px}.page-head p{margin:5px 0 0;color:var(--muted);font-size:12px}
+.grid{display:grid;gap:16px}.grid.kpis{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:16px}.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:17px;box-shadow:var(--shadow-sm)}.kpi-top{display:flex;justify-content:space-between;gap:10px}.kpi-label{font-size:11px;color:var(--muted);font-weight:800}.kpi-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--sky);color:var(--blue)}.kpi-value{font-size:29px;font-weight:900;letter-spacing:-1px;margin-top:5px}.kpi-note{font-size:10px;color:var(--muted);margin-top:2px}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden}.card-pad{padding:18px}.card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}.card-head h3{font-size:14px;margin:0}.card-head span{font-size:11px;color:var(--muted)}
+.dash-grid{grid-template-columns:minmax(0,1.4fr) minmax(300px,.8fr)}.two{grid-template-columns:1fr 1fr}.three{grid-template-columns:repeat(3,1fr)}
+.status-bars{display:flex;flex-direction:column;gap:13px}.bar-row{display:grid;grid-template-columns:118px 1fr 36px;align-items:center;gap:9px;font-size:11px}.bar-track{height:9px;background:#EDF2F6;border-radius:999px;overflow:hidden}.bar-fill{height:100%;background:linear-gradient(90deg,#0B4F8A,#4B9AC8);border-radius:999px}
+.team-row{display:grid;grid-template-columns:minmax(190px,1fr) 1.3fr 80px;gap:14px;align-items:center;padding:13px 0;border-bottom:1px solid #EDF2F6}.team-row:last-child{border-bottom:0}.person{display:flex;align-items:center;gap:10px}.person b{font-size:12px}.person span{display:block;font-size:10px;color:var(--muted);margin-top:2px}.mini-progress{height:7px;border-radius:99px;background:#EDF2F6;overflow:hidden}.mini-progress i{display:block;height:100%;background:#2B7CB3;border-radius:99px}.team-metric{text-align:right;font-size:11px}.team-metric b{display:block;font-size:14px}
+.feed{display:flex;flex-direction:column}.feed-item{display:grid;grid-template-columns:34px 1fr;gap:10px;padding:12px 0;border-bottom:1px solid #EDF2F6}.feed-item:last-child{border-bottom:0}.feed-ico{width:32px;height:32px;border-radius:10px;background:var(--sky2);display:grid;place-items:center;color:var(--blue)}.feed-item b{font-size:11px}.feed-item p{font-size:11px;color:var(--muted);margin:3px 0 0;line-height:1.45}.feed-time{font-size:9px;color:#94A3B8;margin-top:4px}
+.toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.search{position:relative;min-width:260px;flex:1;max-width:420px}.search input{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px 10px 36px;background:#fff}.search:before{content:"⌕";position:absolute;left:13px;top:8px;color:#7D8C99;font-size:18px}.toolbar select{border:1px solid var(--line);border-radius:11px;padding:9px 10px;background:#fff;color:var(--ink)}
+.task-table{width:100%;border-collapse:collapse}.task-table th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#7A8A97;text-align:left;background:#F8FAFC;padding:11px 13px;border-bottom:1px solid var(--line)}.task-table td{padding:12px 13px;border-bottom:1px solid #EDF2F6;font-size:11px;vertical-align:middle}.task-table tr:hover td{background:#FBFDFF}.task-title{font-weight:850;font-size:12px}.task-desc{font-size:10px;color:var(--muted);margin-top:3px;max-width:390px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:850;white-space:nowrap}.pill.todo{background:#EEF2F6;color:#526474}.pill.progress{background:var(--sky);color:var(--blue)}.pill.wait{background:var(--amber-bg);color:var(--amber)}.pill.done{background:var(--green-bg);color:var(--green)}.pill.blocked,.pill.overdue{background:var(--red-bg);color:var(--red)}.pill.high{background:var(--red-bg);color:var(--red)}.pill.medium{background:var(--amber-bg);color:var(--amber)}.pill.low{background:var(--green-bg);color:var(--green)}
+.progress-cell{min-width:110px}.progress-line{height:6px;background:#EDF2F6;border-radius:999px;overflow:hidden;margin-top:4px}.progress-line i{display:block;height:100%;background:var(--blue2)}.actions{display:flex;gap:5px}.link-btn{border:0;background:transparent;color:var(--blue);font-weight:800;font-size:11px;padding:4px}
+.empty{padding:42px;text-align:center;color:var(--muted)}.empty .big{font-size:32px;margin-bottom:9px}
+.board{display:grid;grid-template-columns:repeat(5,minmax(230px,1fr));gap:12px;align-items:start;overflow-x:auto;padding-bottom:8px}.lane{background:#EAF0F5;border:1px solid #D7E2EA;border-radius:16px;min-height:420px;padding:10px}.lane-head{display:flex;justify-content:space-between;align-items:center;padding:4px 4px 10px;font-size:11px;font-weight:900}.lane-count{background:#fff;border:1px solid var(--line);border-radius:999px;padding:2px 7px;color:var(--muted)}.task-card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px;margin-bottom:9px;box-shadow:0 3px 10px rgba(15,55,85,.05)}.task-card h4{font-size:12px;margin:0 0 5px}.task-card p{font-size:10px;color:var(--muted);line-height:1.45;margin:0}.task-card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px}.task-card-foot .avatar{width:27px;height:27px;border-radius:8px;font-size:9px}
+.alert-list{display:flex;flex-direction:column;gap:9px}.alert{border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:12px;padding:11px 12px;background:#fff}.alert.danger{border-left-color:#E5484D;background:#FFFDFC}.alert.warning{border-left-color:#F59E0B}.alert b{font-size:11px}.alert p{font-size:10px;color:var(--muted);margin:4px 0 0;line-height:1.45}
+.modal-backdrop{position:fixed;inset:0;background:rgba(8,28,43,.52);backdrop-filter:blur(3px);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}.modal{width:min(720px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.25)}.modal.wide{width:min(980px,100%)}.modal-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.modal-head h3{margin:0;font-size:16px}.modal-close{border:0;background:#F2F5F7;width:32px;height:32px;border-radius:10px}.modal-body{padding:20px}.modal-foot{display:flex;justify-content:flex-end;gap:9px;padding:15px 20px;border-top:1px solid var(--line);background:#FBFCFD}
+.notif-drawer{position:fixed;right:18px;top:76px;width:min(420px,calc(100vw - 36px));max-height:calc(100vh - 96px);overflow:auto;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 25px 70px rgba(15,55,85,.23);z-index:90}.notif-head{padding:15px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.notif-item{padding:13px 16px;border-bottom:1px solid #EDF2F6;display:grid;grid-template-columns:8px 1fr;gap:10px}.notif-item.unread{background:#F8FBFE}.notif-bullet{width:8px;height:8px;border-radius:50%;background:#CBD5E1;margin-top:4px}.notif-item.unread .notif-bullet{background:#2B7CB3}.notif-item b{font-size:11px}.notif-item p{font-size:10px;color:var(--muted);line-height:1.45;margin:4px 0}.notif-item time{font-size:9px;color:#94A3B8}
+.toast-zone{position:fixed;right:20px;bottom:20px;z-index:200;display:flex;flex-direction:column;gap:9px}.toast{background:#16394F;color:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 12px 30px rgba(0,0,0,.2);font-size:11px;max-width:360px}.toast.ok{background:#176B3A}.toast.err{background:#9D2D28}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:16px}.tab{border:0;background:transparent;padding:10px 12px;color:var(--muted);font-weight:800;border-bottom:2px solid transparent}.tab.active{color:var(--blue);border-color:var(--blue)}
+.user-grid{display:grid;grid-template-columns:repeat(4,minmax(220px,1fr));gap:13px}.user-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:15px}.user-card-top{display:flex;align-items:center;gap:10px}.user-card h4{margin:0;font-size:12px}.user-card p{font-size:10px;color:var(--muted);margin:3px 0 0}.user-card .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}.meta-box{background:#F7FAFC;border-radius:10px;padding:9px}.meta-box b{font-size:12px}.meta-box span{display:block;font-size:9px;color:var(--muted);margin-top:2px}
+.audit-table{width:100%;border-collapse:collapse}.audit-table th,.audit-table td{padding:10px 12px;border-bottom:1px solid #EDF2F6;text-align:left;font-size:10px}.audit-table th{background:#F8FAFC;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.mobile-menu{display:none}
+@media(max-width:1200px){.grid.kpis{grid-template-columns:repeat(3,1fr)}.user-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){
+  body{overflow:auto}.login-page{grid-template-columns:1fr}.login-hero{display:none}.shell{grid-template-columns:1fr;grid-template-rows:var(--top) 1fr}.sidebar{position:fixed;left:-270px;width:260px;height:100vh;transition:.2s;box-shadow:var(--shadow);z-index:40}.sidebar.open{left:0}.topbar,.main{grid-column:1}.topbar{padding:0 14px}.mobile-menu{display:grid}.main{padding:16px}.grid.kpis{grid-template-columns:repeat(2,1fr)}.dash-grid,.two,.three{grid-template-columns:1fr}.user-grid{grid-template-columns:repeat(2,1fr)}.page-head{align-items:flex-start;flex-direction:column}
+}
+@media(max-width:580px){.grid.kpis{grid-template-columns:1fr 1fr}.kpi{padding:13px}.kpi-value{font-size:24px}.user-grid{grid-template-columns:1fr}.row{flex-direction:column}.search{min-width:100%;max-width:none}.top-sub,.sync-pill span.label{display:none}.main{padding:12px}.page-head h2{font-size:22px}}
+
+
+/* V6 — Pessoas, avatares e ações */
+.avatar-photo{padding:0!important;overflow:hidden;background:#fff!important}
+.avatar-photo img{width:100%;height:100%;display:block;object-fit:cover;border-radius:inherit}
+.status-select{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 9px;font-size:10px;font-weight:800;color:var(--ink);min-width:126px}
+.status-select.is-overdue{border-color:#F0B7B2;background:#FFF9F8}
+.user-card-actions{display:flex;gap:7px;margin-top:12px}
+.user-card-actions .btn{flex:1}
+.user-inactive{opacity:.67;background:#FAFBFC}
+.photo-editor{display:flex;align-items:center;gap:16px;padding:14px;background:#F7FAFC;border:1px solid var(--line);border-radius:14px;margin-bottom:16px}
+.photo-editor .avatar.lg{width:78px;height:78px;border-radius:20px;font-size:20px}
+.record-hero{display:flex;align-items:center;gap:16px;padding:6px 0 18px;border-bottom:1px solid var(--line)}
+.record-hero .avatar.lg{width:82px;height:82px;border-radius:22px;font-size:21px}
+.record-hero h2{margin:0;font-size:22px;letter-spacing:-.5px}
+.record-hero p{margin:4px 0 8px;color:var(--muted)}
+.record-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}
+.record-kpis>div{padding:12px;border-radius:12px;background:#F7FAFC;border:1px solid var(--line)}
+.record-kpis b{display:block;font-size:20px}.record-kpis span{font-size:9px;color:var(--muted)}
+.record-section{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
+.record-section h4{margin:0 0 10px;font-size:12px}
+.record-line{display:flex;justify-content:space-between;gap:16px;padding:7px 0;border-bottom:1px solid #EDF2F6;font-size:10px}
+.record-line:last-child{border-bottom:0}.record-line span{color:var(--muted)}.record-line b{text-align:right;max-width:62%;word-break:break-word}
+.record-task{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #EDF2F6}
+.record-task:last-child{border-bottom:0}.record-task b{font-size:11px}.record-task span{display:block;font-size:9px;color:var(--muted);margin-top:2px}
+@media(max-width:580px){.record-kpis{grid-template-columns:1fr 1fr}.record-line{flex-direction:column;gap:3px}.record-line b{text-align:left;max-width:100%}}
+
+/* V6.1 — Solicitações de férias e horas extras */
+.request-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.request-summary>div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px}
+.request-summary b{display:block;font-size:22px}.request-summary span{font-size:10px;color:var(--muted)}
+.request-type{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:850;white-space:nowrap}
+.request-special{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;background:#F9FBFD}
+.request-special-title{font-size:12px;font-weight:900;margin-bottom:12px}
+.vacation-special{background:#F8FCFF;border-color:#CFE3F1}.overtime-special{background:#FFFBF4;border-color:#F2D8A5}
+.vacation-list{display:flex;flex-direction:column;gap:9px}
+.vacation-notice{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff}
+.vacation-notice.pending{border-left:4px solid #F59E0B}.vacation-notice.approved{border-left:4px solid #22A06B}
+.vacation-icon{width:34px;height:34px;border-radius:10px;background:#F4F8FB;display:grid;place-items:center}
+.vacation-body b{font-size:11px}.vacation-body p{font-size:10px;color:var(--muted);margin:3px 0 6px}
+.vacation-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:700px){.request-summary{grid-template-columns:1fr}.vacation-notice{grid-template-columns:36px 1fr}.vacation-actions{grid-column:1/3;justify-content:flex-start}}
+
+</style>
+</head>
+<body>
+<script>
+const APP_CONFIG = {
+  VERSION: '6.1.0',
+  DEFAULT_API_URL: "https://script.google.com/macros/s/AKfycbzXEFTcaUYvYhs8E1m6VRUUUire4VwxB12wQQ3-CYho8mtn7jWMBWduFWTHZK5PVeJv/exec",
+  API_STORAGE_KEY: 'crisdu_api_url_v5',
+  TOKEN_KEY: 'crisdu_api_token_v5',
+  POLL_MS: 7000
+};
+
+const STATIC_USERS = {
+  debora:{role:'rh',name:'Débora',initials:'DE',title:'Gerência',team:'Todos os setores',manager:''},
+  bruna:{role:'gestor',name:'Bruna',initials:'BR',title:'Coordenação · Tesouraria e Contas a Pagar',team:'Tesouraria e Contas a Pagar',manager:''},
+  carolini:{role:'gestor',name:'Carolini',initials:'CA',title:'Coordenação de Contas a Receber',team:'Contas a Receber',manager:''},
+  neidi:{role:'gestor',name:'Neidi Becker',initials:'NE',title:'Coordenação · Financeiro Romance',team:'Financeiro Romance',manager:''},
+  leticia:{role:'colab',name:'Letícia',initials:'LM',title:'Analista de Tesouraria',team:'Tesouraria',manager:'bruna'},
+  franciele:{role:'colab',name:'Franciele',initials:'FP',title:'Analista de Tesouraria',team:'Tesouraria',manager:'bruna'},
+  estefani:{role:'colab',name:'Estéfani',initials:'EO',title:'Assistente Pleno · Contas a Pagar',team:'Contas a Pagar',manager:'bruna'},
+  nadia:{role:'colab',name:'Nádia de Vargas Beck',initials:'NB',title:'Especialista Financeira',team:'Tesouraria',manager:'bruna'}
+};
+
+const TEAM_MAP = {bruna:['leticia','franciele','estefani','nadia'],carolini:[],neidi:[]};
+
+const state = {
+  session:null, users:{...STATIC_USERS}, tasks:[], requests:[], feedbacks:[], pdis:[], events:[], notifications:[], audit:[],
+  version:0, page:'dashboard', taskView:'table', taskFilter:'all', peopleFilter:'active', search:'', poll:null, syncing:false, serverState:'idle'
+};
+
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const uid = () => 'id_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);
+const nowIso = () => new Date().toISOString();
+const fmtDate = v => !v ? '—' : new Date(v.length===10?v+'T12:00:00':v).toLocaleDateString('pt-BR');
+const fmtDateTime = v => !v ? '—' : new Date(v).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+const clamp = (n,a,b)=>Math.min(b,Math.max(a,Number(n)||0));
+
+function apiUrl(){ return APP_CONFIG.DEFAULT_API_URL; }
+function token(){ return sessionStorage.getItem(APP_CONFIG.TOKEN_KEY)||''; }
+
+function toast(msg,type='') {
+  const z = $('#toast-zone'); if(!z) return;
+  const el=document.createElement('div'); el.className='toast '+type; el.textContent=msg; z.appendChild(el);
+  setTimeout(()=>el.remove(),4200);
+}
+
+function setServerState(kind,text) {
+  state.serverState=kind;
+  const el=$('#sync-pill'); if(!el)return;
+  el.className='sync-pill '+kind;
+  el.innerHTML=`<span class="status-dot ${kind==='online'?'online':kind==='error'?'error':''}"></span><span class="label">${esc(text||'Servidor')}</span>`;
+}
+
+async function api(action,data={},silent=false) {
+  if(state.syncing && action==='changes') return null;
+  if(!silent)setServerState('syncing','Sincronizando…');
+  const controller=new AbortController(); const t=setTimeout(()=>controller.abort(),25000);
+  try {
+    const r=await fetch(apiUrl(),{method:'POST',redirect:'follow',cache:'no-store',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,token:token(),...data}),signal:controller.signal});
+    const raw=await r.text(); let j;
+    try{j=JSON.parse(raw)}catch(e){throw new Error('Servidor respondeu em formato inválido. Publique o Apps Script como Web App e use a URL /exec.');}
+    if(!j.ok) throw new Error(j.error||j.erro||'Erro no servidor.');
+    setServerState('online','Servidor online'); return j;
+  } catch(e) {
+    if(e.name==='AbortError') e=new Error('Tempo de resposta do servidor excedido.');
+    setServerState('error','Falha no servidor');
+    if(!silent)toast(e.message,'err');
+    throw e;
+  } finally { clearTimeout(t); }
+}
+
+async function testServer() {
+  const err=$('#login-error'); if(err)err.textContent='';
+  try {
+    const j=await api('health',{},true);
+    setServerState('online',j.backend||'Servidor online');
+    toast('Servidor conectado.','ok');
+    return true;
+  } catch(e) {
+    if(err)err.textContent=e.message;
+    return false;
+  }
+}
+
+function currentUser(){ return state.session?.userKey||''; }
+function currentRole(){ return state.session?.role||''; }
+function isLeader(){ return ['rh','gestor'].includes(currentRole()); }
+function user(key){ return state.users[key]||{name:key||'—',initials:String(key||'?').slice(0,2).toUpperCase(),role:'colab',title:'',team:'',manager:'',active:true,photoUrl:'',email:'',phone:'',company:'',unit:'',costCenter:'',contractType:'',workModel:'',birthDate:'',hireDate:'',cpf:'',notes:''}; }
+function avatar(key,lg=false){
+  const u=user(key),cls=`avatar ${lg?'lg':''}`;
+  if(u.photoUrl) return `<span class="${cls} avatar-photo"><img src="${esc(u.photoUrl)}" alt="${esc(u.name)}" onerror="this.parentElement.classList.remove('avatar-photo');this.parentElement.innerHTML='${esc(u.initials||u.name.slice(0,2).toUpperCase())}'"></span>`;
+  return `<span class="${cls}">${esc(u.initials||u.name.slice(0,2).toUpperCase())}</span>`;
+}
+function visibleKeys() {
+  if(currentRole()==='rh') return Object.keys(state.users);
+  if(currentRole()==='gestor') return [currentUser(),...(TEAM_MAP[currentUser()]||[]),...Object.keys(state.users).filter(k=>state.users[k].manager===currentUser()&&state.users[k].active!==false)].filter((v,i,a)=>a.indexOf(v)===i);
+  return [currentUser()];
+}
+function teamKeys(){ return currentRole()==='rh'?Object.keys(state.users).filter(k=>state.users[k].role==='colab'):visibleKeys().filter(k=>k!==currentUser()&&state.users[k]?.role==='colab'); }
+function canSeeOwner(owner){ return visibleKeys().includes(owner); }
+
+function statusClass(s){ return {'Não iniciada':'todo','Em andamento':'progress','Aguardando':'wait','Concluída':'done','Bloqueada':'blocked'}[s]||'todo'; }
+function priorityClass(p){ return {'Alta':'high','Média':'medium','Baixa':'low'}[p]||'low'; }
+function requestStatusClass(s){
+  return {'Pendente de aprovação':'wait','Em análise':'progress','Aprovada':'done','Rejeitada':'blocked','Cancelada':'todo','Concluída':'done'}[s]||statusClass(s);
+}
+function daysBetweenInclusive(a,b){
+  if(!a||!b)return 0;
+  const x=new Date(a+'T12:00:00'),y=new Date(b+'T12:00:00');
+  return Math.max(0,Math.round((y-x)/86400000)+1);
+}
+function requestTypeIcon(type){
+  return type==='Férias'?'🏖':type==='Horas extras'?'⏱':'↗';
+}
+function vacationRequests(){
+  return state.requests.filter(r=>r.type==='Férias' && (currentRole()==='rh'||r.requester===currentUser()||r.recipient===currentUser()||canSeeOwner(r.requester)));
+}
+
+function isOverdue(t){ return t.status!=='Concluída'&&t.dueDate&&new Date(t.dueDate+'T23:59:59')<new Date(); }
+function dueSoon(t){ if(!t.dueDate||t.status==='Concluída')return false; const d=(new Date(t.dueDate+'T23:59:59')-new Date())/86400000; return d>=0&&d<=3; }
+function pct(t){ return clamp(t.progress,0,100); }
+
+function navItems() {
+  const base=[
+    ['dashboard','▦','Painel'],
+    ['tasks','✓','Atividades'],
+    ['requests','↗','Solicitações'],
+    ['feedbacks','◌','Feedbacks & PDI']
+  ];
+  if(isLeader()) base.splice(2,0,['team','👥','Equipe']);
+  if(isLeader()) base.push(['people','♙','Pessoas']);
+  if(isLeader()) base.push(['audit','≡','Auditoria']);
+  base.push(['settings','⚙','Configurações']);
+  return base;
+}
+
+function renderShell() {
+  document.body.innerHTML=`<div id="app">
+    <div class="shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="side-brand"><div class="logo-mark">RH</div><div><b>Gestão de Pessoas</b><span>Financeiro Central</span></div></div>
+        <nav class="nav" id="nav"></nav>
+        <div class="side-footer">
+          <div class="mini-user">${avatar(currentUser())}<div><b>${esc(user(currentUser()).name)}</b><span>${esc(user(currentUser()).title||currentRole())}</span></div></div>
+          <button class="btn btn-outline btn-sm" style="width:100%;margin-top:8px" onclick="logout()">Sair</button>
+        </div>
+      </aside>
+      <header class="topbar">
+        <button class="icon-btn mobile-menu" onclick="toggleMobileMenu()">☰</button>
+        <div><div class="top-title" id="top-title">Painel</div><div class="top-sub" id="top-sub">Visão integrada da equipe</div></div>
+        <div class="top-spacer"></div>
+        <div class="sync-pill" id="sync-pill"><span class="status-dot"></span><span class="label">Servidor</span></div>
+        <button class="icon-btn" title="Notificações" onclick="toggleNotifications()">🔔<span class="badge-count hidden" id="notif-count">0</span></button>
+      </header>
+      <main class="main"><div class="page" id="page"></div></main>
+    </div>
+    <div id="notif-drawer"></div><div id="modal-root"></div><div class="toast-zone" id="toast-zone"></div>
+  </div>`;
+  renderNav(); updateNotifBadge(); renderPage(); startPolling();
+}
+
+function renderNav() {
+  $('#nav').innerHTML=navItems().map(([id,ico,label])=>`<button class="${state.page===id?'active':''}" onclick="go('${id}')"><span class="nav-ico">${ico}</span>${label}</button>`).join('');
+}
+function go(page){ state.page=page; renderNav(); renderPage(); toggleMobileMenu(false); }
+function toggleMobileMenu(force){ const s=$('#sidebar'); if(!s)return; force===false?s.classList.remove('open'):s.classList.toggle('open'); }
+
+function pageHead(title,sub,action='') {
+  return `<div class="page-head"><div><h2>${esc(title)}</h2><p>${esc(sub)}</p></div>${action}</div>`;
+}
+
+function scopedTasks(){ return state.tasks.filter(t=>canSeeOwner(t.owner)||t.createdBy===currentUser()); }
+
+function dashboardData() {
+  const tasks=scopedTasks(), open=tasks.filter(t=>t.status!=='Concluída'), done=tasks.filter(t=>t.status==='Concluída');
+  return {
+    tasks, open, done,
+    progress:open.filter(t=>t.status==='Em andamento'),
+    overdue:open.filter(isOverdue),
+    blocked:open.filter(t=>t.status==='Bloqueada'),
+    soon:open.filter(dueSoon)
+  };
+}
+
+function renderDashboard() {
+  const d=dashboardData();
+  const team = isLeader()?teamKeys():[currentUser()];
+  const kpis=[
+    ['Atividades abertas',d.open.length,'Carteira atual','✓'],
+    ['Em andamento',d.progress.length,'Execução ativa','↻'],
+    ['Vencidas',d.overdue.length,'Exigem ação','!'],
+    ['Bloqueadas',d.blocked.length,'Com impedimentos','⛔'],
+    ['Concluídas',d.done.length,'Histórico visível','✓']
+  ];
+  const title=isLeader()?'Painel da Gestão':'Meu Painel';
+  const sub=isLeader()?'Acompanhamento do status das atividades do time em tempo quase real.':'Suas atividades, prazos, pendências e notificações em um único lugar.';
+  $('#top-title').textContent=title; $('#top-sub').textContent=sub;
+  $('#page').innerHTML=pageHead(title,sub,`<button class="btn btn-primary" onclick="openTaskModal()">+ Nova atividade</button>`) +
+    `<div class="grid kpis">${kpis.map((k,i)=>`<div class="kpi"><div class="kpi-top"><div><div class="kpi-label">${k[0]}</div><div class="kpi-value">${k[1]}</div><div class="kpi-note">${k[2]}</div></div><div class="kpi-icon">${k[3]}</div></div></div>`).join('')}</div>
+    <div class="grid dash-grid">
+      <div class="grid" style="gap:16px">
+        <div class="card"><div class="card-head"><div><h3>${isLeader()?'Status das atividades do time':'Status das minhas atividades'}</h3><span>Distribuição por etapa</span></div><button class="link-btn" onclick="go('tasks')">Ver atividades</button></div><div class="card-pad">${renderStatusBars(d.tasks)}</div></div>
+        ${isLeader()?`<div class="card"><div class="card-head"><div><h3>Visão por pessoa</h3><span>Carga, avanço e pontos de atenção</span></div></div><div class="card-pad">${renderTeamSummary(team)}</div></div>`:''}
+        <div class="card"><div class="card-head"><div><h3>Movimentações recentes</h3><span>Criações, alterações de status e registros</span></div></div><div class="card-pad">${renderFeed(state.events.slice(0,12))}</div></div>
+      </div>
+      <div class="grid" style="gap:16px">
+        <div class="card"><div class="card-head"><div><h3>Alertas gerenciais</h3><span>O que precisa de atenção agora</span></div></div><div class="card-pad">${renderAlerts(d)}</div></div>
+        ${isLeader()?`<div class="card"><div class="card-head"><div><h3>Avisos de férias</h3><span>Pedidos pendentes e férias programadas</span></div><button class="link-btn" onclick="go('requests')">Ver solicitações</button></div><div class="card-pad">${renderVacationNotices()}</div></div>`:''}
+        <div class="card"><div class="card-head"><div><h3>Próximos prazos</h3><span>Até 7 dias</span></div></div><div class="card-pad">${renderUpcoming(d.open)}</div></div>
+      </div>
+    </div>`;
+}
+
+function renderStatusBars(tasks) {
+  const statuses=['Não iniciada','Em andamento','Aguardando','Bloqueada','Concluída'];
+  const total=Math.max(tasks.length,1);
+  return `<div class="status-bars">${statuses.map(s=>{const n=tasks.filter(t=>t.status===s).length;return `<div class="bar-row"><span>${esc(s)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/total*100)}%"></div></div><b>${n}</b></div>`}).join('')}</div>`;
+}
+function renderTeamSummary(keys) {
+  if(!keys.length)return `<div class="empty"><div class="big">👥</div>Nenhum colaborador vinculado a esta gestão.</div>`;
+  return keys.map(k=>{const ts=state.tasks.filter(t=>t.owner===k), open=ts.filter(t=>t.status!=='Concluída'), ov=open.filter(isOverdue).length, bl=open.filter(t=>t.status==='Bloqueada').length; const avg=ts.length?Math.round(ts.reduce((a,t)=>a+pct(t),0)/ts.length):0; return `<div class="team-row"><div class="person">${avatar(k)}<div><b>${esc(user(k).name)}</b><span>${esc(user(k).title||user(k).team)}</span></div></div><div><div class="small muted">${open.length} abertas · ${ov} vencidas · ${bl} bloqueadas</div><div class="mini-progress"><i style="width:${avg}%"></i></div></div><div class="team-metric"><b>${avg}%</b><span class="muted">avanço</span></div></div>`}).join('');
+}
+function renderFeed(events) {
+  if(!events.length)return `<div class="empty">Nenhuma movimentação registrada ainda.</div>`;
+  return `<div class="feed">${events.map(e=>`<div class="feed-item"><div class="feed-ico">${(!e.icon||String(e.icon).startsWith('#ERROR'))?'＋':e.icon}</div><div><b>${esc(e.title||e.type||'Atualização')}</b><p>${esc(e.detail||'')}</p><div class="feed-time">${esc(user(e.actor).name)} · ${fmtDateTime(e.createdAt)}</div></div></div>`).join('')}</div>`;
+}
+function renderAlerts(d) {
+  const arr=[];
+  d.overdue.slice(0,4).forEach(t=>arr.push(`<div class="alert danger"><b>Atividade vencida · ${esc(user(t.owner).name)}</b><p>${esc(t.title)} · prazo ${fmtDate(t.dueDate)}</p></div>`));
+  d.blocked.slice(0,4).forEach(t=>arr.push(`<div class="alert danger"><b>Bloqueio informado · ${esc(user(t.owner).name)}</b><p>${esc(t.title)}${t.blocker?' · '+esc(t.blocker):''}</p></div>`));
+  d.soon.slice(0,4).forEach(t=>arr.push(`<div class="alert warning"><b>Prazo próximo · ${esc(user(t.owner).name)}</b><p>${esc(t.title)} · ${fmtDate(t.dueDate)}</p></div>`));
+  return arr.length?`<div class="alert-list">${arr.slice(0,8).join('')}</div>`:`<div class="empty">Nenhum alerta crítico no momento.</div>`;
+}
+
+function renderVacationNotices(){
+  const rows=vacationRequests().filter(r=>['Pendente de aprovação','Em análise','Aprovada'].includes(r.status))
+    .sort((a,b)=>String(a.startDate||'9999').localeCompare(String(b.startDate||'9999')));
+  if(!rows.length)return `<div class="empty">Nenhum aviso de férias no momento.</div>`;
+  return `<div class="vacation-list">${rows.slice(0,8).map(r=>{
+    const pending=['Pendente de aprovação','Em análise'].includes(r.status);
+    const days=r.days||daysBetweenInclusive(r.startDate,r.endDate);
+    return `<div class="vacation-notice ${pending?'pending':'approved'}">
+      <div class="vacation-icon">${pending?'⏳':'🏖'}</div>
+      <div class="vacation-body"><b>${esc(user(r.requester).name)}</b>
+      <p>${fmtDate(r.startDate)} a ${fmtDate(r.endDate)} · ${days} dia${days===1?'':'s'}</p>
+      <span class="pill ${requestStatusClass(r.status)}">${esc(r.status)}</span></div>
+      ${pending&&isLeader()?`<div class="vacation-actions"><button class="btn btn-soft btn-sm" onclick="decideRequest('${r.id}','Aprovada')">Aprovar</button><button class="btn btn-danger btn-sm" onclick="decideRequest('${r.id}','Rejeitada')">Rejeitar</button></div>`:''}
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderUpcoming(tasks) {
+  const rows=tasks.filter(t=>t.dueDate).sort((a,b)=>String(a.dueDate).localeCompare(String(b.dueDate))).filter(t=>{const d=(new Date(t.dueDate+'T23:59:59')-new Date())/86400000;return d>=0&&d<=7}).slice(0,8);
+  if(!rows.length)return `<div class="empty">Sem prazos nos próximos 7 dias.</div>`;
+  return rows.map(t=>`<div class="feed-item"><div class="feed-ico">📅</div><div><b>${esc(t.title)}</b><p>${esc(user(t.owner).name)} · <span class="pill ${priorityClass(t.priority)}">${esc(t.priority)}</span></p><div class="feed-time">${fmtDate(t.dueDate)}</div></div></div>`).join('');
+}
+
+function renderTasks() {
+  $('#top-title').textContent='Atividades'; $('#top-sub').textContent='Criação, execução, prazos e status';
+  const all=scopedTasks();
+  const q=state.search.toLowerCase();
+  const tasks=all.filter(t=>{
+    if(state.taskFilter!=='all'&&t.status!==state.taskFilter)return false;
+    return !q||[t.title,t.description,user(t.owner).name,t.category,t.status].join(' ').toLowerCase().includes(q);
+  });
+  $('#page').innerHTML=pageHead('Atividades','Toda alteração é registrada no servidor e refletida no painel da gestão.',`<button class="btn btn-primary" onclick="openTaskModal()">+ Nova atividade</button>`) +
+  `<div class="toolbar"><div class="search"><input placeholder="Buscar atividade, responsável ou categoria..." value="${esc(state.search)}" oninput="state.search=this.value;renderTasks()"></div>
+  <select onchange="state.taskFilter=this.value;renderTasks()"><option value="all">Todos os status</option>${['Não iniciada','Em andamento','Aguardando','Bloqueada','Concluída'].map(s=>`<option ${state.taskFilter===s?'selected':''}>${s}</option>`).join('')}</select>
+  <button class="btn btn-outline btn-sm" onclick="state.taskView=state.taskView==='table'?'board':'table';renderTasks()">${state.taskView==='table'?'Quadro':'Tabela'}</button></div>
+  <div class="card">${state.taskView==='table'?renderTaskTable(tasks):renderTaskBoard(tasks)}</div>`;
+}
+function renderTaskTable(tasks) {
+  if(!tasks.length)return `<div class="empty"><div class="big">✓</div>Nenhuma atividade encontrada.</div>`;
+  return `<div style="overflow:auto"><table class="task-table"><thead><tr><th>Atividade</th><th>Responsável</th><th>Status</th><th>Prioridade</th><th>Prazo</th><th>Progresso</th><th>Ações</th></tr></thead><tbody>${tasks.map(t=>`<tr>
+    <td><div class="task-title">${esc(t.title)}</div><div class="task-desc">${esc(t.description||t.category||'')}</div></td>
+    <td><div class="person">${avatar(t.owner)}<div><b>${esc(user(t.owner).name)}</b><span>${esc(user(t.owner).team)}</span></div></div></td>
+    <td><select class="status-select ${isOverdue(t)?'is-overdue':''}" onchange="quickTaskStatus('${t.id}',this.value)" title="Alterar status">${['Não iniciada','Em andamento','Aguardando','Bloqueada','Concluída'].map(s=>`<option ${t.status===s?'selected':''}>${s}</option>`).join('')}</select>${isOverdue(t)?'<div class="small" style="color:var(--red);margin-top:4px">Prazo vencido</div>':''}</td>
+    <td><span class="pill ${priorityClass(t.priority)}">${esc(t.priority)}</span></td><td>${fmtDate(t.dueDate)}</td>
+    <td class="progress-cell"><b>${pct(t)}%</b><div class="progress-line"><i style="width:${pct(t)}%"></i></div></td>
+    <td><div class="actions"><button class="btn btn-soft btn-sm" onclick="openTaskModal('${t.id}')">Editar</button>${canDeleteTask(t)?`<button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">Excluir</button>`:''}</div></td></tr>`).join('')}</tbody></table></div>`;
+}
+function renderTaskBoard(tasks) {
+  const statuses=['Não iniciada','Em andamento','Aguardando','Bloqueada','Concluída'];
+  return `<div class="board" style="padding:12px">${statuses.map(s=>{const ts=tasks.filter(t=>t.status===s);return `<div class="lane"><div class="lane-head"><span>${s}</span><span class="lane-count">${ts.length}</span></div>${ts.map(t=>`<div class="task-card" onclick="openTaskModal('${t.id}')"><h4>${esc(t.title)}</h4><p>${esc(t.description||t.category||'Sem descrição')}</p><div class="task-card-foot">${avatar(t.owner)}<span class="pill ${priorityClass(t.priority)}">${esc(t.priority)}</span></div></div>`).join('')}</div>`}).join('')}</div>`;
+}
+function canDeleteTask(t){ return currentRole()==='rh'||t.owner===currentUser()||t.createdBy===currentUser()||(currentRole()==='gestor'&&canSeeOwner(t.owner)); }
+async function quickTaskStatus(id,status){
+  try{const j=await api('updateTaskStatus',{id,status});applySnapshot(j.snapshot);toast('Status atualizado e gestão notificada.','ok');renderPage();}catch(e){renderPage();}
+}
+
+function taskOwnerOptions(selected='') {
+  let keys;
+  if(currentRole()==='rh')keys=Object.keys(state.users).filter(k=>state.users[k].role!=='rh');
+  else if(currentRole()==='gestor')keys=[currentUser(),...teamKeys()];
+  else keys=[currentUser()];
+  return keys.filter((v,i,a)=>a.indexOf(v)===i).map(k=>`<option value="${k}" ${selected===k?'selected':''}>${esc(user(k).name)} · ${esc(user(k).team||user(k).title)}</option>`).join('');
+}
+function openTaskModal(id='') {
+  const t=state.tasks.find(x=>x.id===id)||{id:'',title:'',description:'',owner:currentRole()==='colab'?currentUser():(teamKeys()[0]||currentUser()),status:'Não iniciada',priority:'Média',progress:0,startDate:new Date().toISOString().slice(0,10),dueDate:'',category:'Rotina',recurrence:'Não',blocker:'',difficulty:'',notes:''};
+  const canManage=isLeader()||t.owner===currentUser();
+  showModal('Atividade',`<div class="row"><div class="field"><label>Título *</label><input id="t-title" value="${esc(t.title)}"></div><div class="field"><label>Responsável *</label><select id="t-owner" ${currentRole()==='colab'?'disabled':''}>${taskOwnerOptions(t.owner)}</select></div></div>
+  <div class="field"><label>Descrição</label><textarea id="t-desc">${esc(t.description)}</textarea></div>
+  <div class="row"><div class="field"><label>Status</label><select id="t-status">${['Não iniciada','Em andamento','Aguardando','Bloqueada','Concluída'].map(s=>`<option ${t.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+  <div class="field"><label>Prioridade</label><select id="t-priority">${['Baixa','Média','Alta'].map(s=>`<option ${t.priority===s?'selected':''}>${s}</option>`).join('')}</select></div>
+  <div class="field"><label>Progresso (%)</label><input id="t-progress" type="number" min="0" max="100" value="${pct(t)}"></div></div>
+  <div class="row"><div class="field"><label>Início</label><input id="t-start" type="date" value="${esc(t.startDate||'')}"></div><div class="field"><label>Prazo</label><input id="t-due" type="date" value="${esc(t.dueDate||'')}"></div><div class="field"><label>Categoria</label><input id="t-cat" value="${esc(t.category||'')}"></div></div>
+  <div class="row"><div class="field"><label>Recorrência</label><select id="t-rec">${['Não','Diária','Semanal','Quinzenal','Mensal'].map(s=>`<option ${String(t.recurrence||'Não')===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="field"><label>Resultado / evidência</label><input id="t-result" value="${esc(t.result||'')}" placeholder="Link, protocolo ou resultado final"></div></div>
+  <div class="row"><div class="field"><label>Bloqueio / dependência</label><input id="t-blocker" value="${esc(t.blocker||'')}" placeholder="Descreva impedimentos"></div><div class="field"><label>Dificuldade</label><input id="t-difficulty" value="${esc(t.difficulty||'')}" placeholder="Ex.: baixa, média, alta ou detalhe"></div></div>
+  <div class="field"><label>Observações</label><textarea id="t-notes">${esc(t.notes||'')}</textarea></div>`,
+  `${t.id&&canDeleteTask(t)?`<button class="btn btn-danger" style="margin-right:auto" onclick="deleteTask('${t.id}');closeModal()">Excluir</button>`:''}<button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveTask('${t.id}')">Salvar atividade</button>`,true);
+}
+async function saveTask(id='') {
+  const title=$('#t-title').value.trim(); if(!title)return toast('Informe o título da atividade.','err');
+  const old=state.tasks.find(x=>x.id===id);
+  const payload={id:id||uid(),title,description:$('#t-desc').value.trim(),owner:$('#t-owner').value,createdBy:old?.createdBy||currentUser(),status:$('#t-status').value,priority:$('#t-priority').value,progress:clamp($('#t-progress').value,0,100),startDate:$('#t-start').value,dueDate:$('#t-due').value,category:$('#t-cat').value.trim(),recurrence:$('#t-rec').value,result:$('#t-result').value.trim(),blocker:$('#t-blocker').value.trim(),difficulty:$('#t-difficulty').value.trim(),notes:$('#t-notes').value.trim(),createdAt:old?.createdAt||nowIso(),updatedAt:nowIso()};
+  if(payload.status==='Concluída')payload.progress=100;
+  try{const j=await api('saveTask',{task:payload}); applySnapshot(j.snapshot); closeModal(); toast(old?'Atividade atualizada e gestão notificada.':'Atividade criada e responsáveis notificados.','ok'); renderPage();}catch(e){}
+}
+async function deleteTask(id) {
+  if(!confirm('Excluir esta atividade? A ação ficará registrada na auditoria.'))return;
+  try{const j=await api('deleteTask',{id});applySnapshot(j.snapshot);toast('Atividade excluída.','ok');renderPage();}catch(e){}
+}
+
+function renderTeam() {
+  $('#top-title').textContent='Equipe'; $('#top-sub').textContent='Carga de trabalho e evolução por colaborador';
+  const keys=teamKeys();
+  $('#page').innerHTML=pageHead('Equipe','Visão consolidada para acompanhamento gerencial.')+
+  `<div class="user-grid">${keys.map(k=>{const ts=state.tasks.filter(t=>t.owner===k),open=ts.filter(t=>t.status!=='Concluída'),done=ts.filter(t=>t.status==='Concluída'),ov=open.filter(isOverdue),bl=open.filter(t=>t.status==='Bloqueada');return `<div class="user-card"><div class="user-card-top">${avatar(k,true)}<div><h4>${esc(user(k).name)}</h4><p>${esc(user(k).title)}</p></div></div><div class="meta"><div class="meta-box"><b>${open.length}</b><span>Abertas</span></div><div class="meta-box"><b>${done.length}</b><span>Concluídas</span></div><div class="meta-box"><b>${ov.length}</b><span>Vencidas</span></div><div class="meta-box"><b>${bl.length}</b><span>Bloqueadas</span></div></div><button class="btn btn-soft btn-sm" style="width:100%;margin-top:12px" onclick="state.search='${esc(user(k).name)}';go('tasks')">Ver atividades</button></div>`}).join('')}</div>`;
+}
+
+
+function visibleRequests(){
+  return state.requests.filter(r=>currentRole()==='rh'||r.requester===currentUser()||r.recipient===currentUser()||canSeeOwner(r.requester)||canSeeOwner(r.recipient));
+}
+function renderRequests() {
+  $('#top-title').textContent='Solicitações'; $('#top-sub').textContent='Férias, horas extras e demais demandas';
+  const rows=visibleRequests().sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  $('#page').innerHTML=pageHead('Solicitações','Férias e horas extras seguem fluxo de aprovação e geram avisos para a gestão.',`<button class="btn btn-primary" onclick="openRequestModal()">+ Nova solicitação</button>`) +
+  `<div class="request-summary">
+    <div><b>${rows.filter(r=>r.status==='Pendente de aprovação').length}</b><span>Pendentes</span></div>
+    <div><b>${rows.filter(r=>r.type==='Férias'&&r.status==='Aprovada').length}</b><span>Férias aprovadas</span></div>
+    <div><b>${rows.filter(r=>r.type==='Horas extras'&&r.status==='Aprovada').length}</b><span>Horas extras aprovadas</span></div>
+  </div>
+  <div class="card">${rows.length?`<div style="overflow:auto"><table class="task-table"><thead><tr><th>Tipo</th><th>Solicitação</th><th>Solicitante</th><th>Período / Data</th><th>Status</th><th>Prioridade</th><th>Atualização</th><th>Ações</th></tr></thead><tbody>${rows.map(r=>`<tr>
+    <td><span class="request-type">${requestTypeIcon(r.type)} ${esc(r.type)}</span></td>
+    <td><div class="task-title">${esc(r.title)}</div><div class="task-desc">${esc(requestExtraSummary(r))}</div></td>
+    <td>${esc(user(r.requester).name)}</td>
+    <td>${r.type==='Férias'?`${fmtDate(r.startDate)} a ${fmtDate(r.endDate)}`:r.type==='Horas extras'?fmtDate(r.overtimeDate):'—'}</td>
+    <td><span class="pill ${requestStatusClass(r.status)}">${esc(r.status)}</span></td>
+    <td><span class="pill ${priorityClass(r.priority)}">${esc(r.priority)}</span></td>
+    <td>${fmtDateTime(r.updatedAt)}</td>
+    <td><div class="actions"><button class="btn btn-soft btn-sm" onclick="openRequestModal('${r.id}')">Abrir</button>
+      ${isLeader()&&['Pendente de aprovação','Em análise'].includes(r.status)?`<button class="btn btn-outline btn-sm" onclick="decideRequest('${r.id}','Aprovada')">Aprovar</button><button class="btn btn-danger btn-sm" onclick="decideRequest('${r.id}','Rejeitada')">Rejeitar</button>`:''}
+      ${(r.requester===currentUser()||currentRole()==='rh')&&!['Aprovada','Rejeitada'].includes(r.status)?`<button class="btn btn-outline btn-sm" onclick="cancelRequest('${r.id}')">Cancelar</button>`:''}
+    </div></td></tr>`).join('')}</tbody></table></div>`:`<div class="empty">Nenhuma solicitação registrada.</div>`}</div>`;
+}
+function requestExtraSummary(r){
+  if(r.type==='Férias')return `${r.days||daysBetweenInclusive(r.startDate,r.endDate)} dias${r.reason?' · '+r.reason:''}`;
+  if(r.type==='Horas extras')return `${r.hours||0} hora(s)${r.startTime&&r.endTime?' · '+r.startTime+'–'+r.endTime:''}${r.reason?' · '+r.reason:''}`;
+  return r.description||r.type||'';
+}
+function requestRecipientDefault(){
+  if(currentRole()==='colab')return user(currentUser()).manager||'bruna';
+  return currentUser();
+}
+function openRequestModal(id='') {
+  const old=state.requests.find(x=>x.id===id);
+  const r=old||{id:'',type:'Geral',title:'',description:'',requester:currentUser(),recipient:requestRecipientDefault(),status:'Pendente de aprovação',priority:'Média',startDate:'',endDate:'',days:0,overtimeDate:'',hours:'',startTime:'',endTime:'',reason:'',managerNote:''};
+  const recipients=Object.keys(state.users).filter(k=>k!==currentUser()&&state.users[k].active!==false&&['gestor','rh'].includes(state.users[k].role));
+  const canEdit=!old || r.requester===currentUser() || currentRole()==='rh';
+  showModal('Solicitação',`
+  <div class="row"><div class="field"><label>Tipo de solicitação</label><select id="r-type" onchange="renderRequestFields()" ${old?'disabled':''}><option ${r.type==='Geral'?'selected':''}>Geral</option><option ${r.type==='Horas extras'?'selected':''}>Horas extras</option><option ${r.type==='Férias'?'selected':''}>Férias</option></select></div>
+  <div class="field"><label>Destinatário / aprovador</label><select id="r-rec" ${canEdit?'':'disabled'}>${recipients.map(k=>`<option value="${k}" ${r.recipient===k?'selected':''}>${esc(user(k).name)}</option>`).join('')}</select></div></div>
+  <div class="field"><label>Título *</label><input id="r-title" value="${esc(r.title)}" ${canEdit?'':'disabled'}></div>
+  <div id="r-dynamic"></div>
+  <div class="field"><label>Descrição complementar</label><textarea id="r-desc" ${canEdit?'':'disabled'}>${esc(r.description||'')}</textarea></div>
+  ${old?`<div class="row"><div class="field"><label>Status</label><div class="readbox"><span class="pill ${requestStatusClass(r.status)}">${esc(r.status)}</span></div></div><div class="field"><label>Decidido por</label><div class="readbox">${esc(user(r.decidedBy).name||'—')}</div></div></div>
+  <div class="field"><label>Observação da gestão</label><div class="readbox">${esc(r.managerNote||'—')}</div></div>`:''}`,
+  `<button class="btn btn-outline" onclick="closeModal()">Fechar</button>${canEdit&&!['Aprovada','Rejeitada','Cancelada'].includes(r.status)?`<button class="btn btn-primary" onclick="saveRequest('${r.id}')">Salvar solicitação</button>`:''}`,true);
+  setTimeout(()=>renderRequestFields(r),0);
+}
+function renderRequestFields(existing){
+  const type=$('#r-type')?.value||existing?.type||'Geral',r=existing||state.requests.find(x=>x.id===window.__openRequestId)||{};
+  const box=$('#r-dynamic');if(!box)return;
+  if(type==='Férias'){
+    box.innerHTML=`<div class="request-special vacation-special"><div class="request-special-title">🏖 Solicitação de férias</div>
+      <div class="row"><div class="field"><label>Início das férias *</label><input id="r-start" type="date" value="${esc(r.startDate||'')}" onchange="updateVacationDays()"></div><div class="field"><label>Fim das férias *</label><input id="r-end" type="date" value="${esc(r.endDate||'')}" onchange="updateVacationDays()"></div><div class="field"><label>Total</label><div class="readbox" id="r-days-box">${r.days||daysBetweenInclusive(r.startDate,r.endDate)||0} dias</div></div></div>
+      <div class="field"><label>Observação / motivo</label><input id="r-reason" value="${esc(r.reason||'')}" placeholder="Opcional"></div></div>`;
+  }else if(type==='Horas extras'){
+    box.innerHTML=`<div class="request-special overtime-special"><div class="request-special-title">⏱ Solicitação de horas extras</div>
+      <div class="row"><div class="field"><label>Data *</label><input id="r-ot-date" type="date" value="${esc(r.overtimeDate||'')}"></div><div class="field"><label>Quantidade de horas *</label><input id="r-hours" type="number" min="0.5" max="24" step="0.5" value="${esc(r.hours||'')}"></div></div>
+      <div class="row"><div class="field"><label>Horário inicial</label><input id="r-start-time" type="time" value="${esc(r.startTime||'')}"></div><div class="field"><label>Horário final</label><input id="r-end-time" type="time" value="${esc(r.endTime||'')}"></div></div>
+      <div class="field"><label>Justificativa *</label><textarea id="r-reason" placeholder="Descreva a necessidade das horas extras">${esc(r.reason||'')}</textarea></div></div>`;
+  }else{
+    box.innerHTML=`<div class="field"><label>Motivo / assunto</label><input id="r-reason" value="${esc(r.reason||'')}"></div>`;
+  }
+}
+function updateVacationDays(){const n=daysBetweenInclusive($('#r-start')?.value,$('#r-end')?.value),b=$('#r-days-box');if(b)b.textContent=n+' dias';}
+async function saveRequest(id='') {
+  const old=state.requests.find(x=>x.id===id),type=$('#r-type').value,title=$('#r-title').value.trim();if(!title)return toast('Informe o título.','err');
+  const req={id:id||uid(),type,title,description:$('#r-desc').value.trim(),requester:old?.requester||currentUser(),recipient:$('#r-rec').value,status:old?.status||'Pendente de aprovação',priority:type==='Férias'?'Média':type==='Horas extras'?'Alta':'Média',
+    startDate:type==='Férias'?$('#r-start').value:'',endDate:type==='Férias'?$('#r-end').value:'',days:type==='Férias'?daysBetweenInclusive($('#r-start').value,$('#r-end').value):0,
+    overtimeDate:type==='Horas extras'?$('#r-ot-date').value:'',hours:type==='Horas extras'?Number($('#r-hours').value||0):0,startTime:type==='Horas extras'?$('#r-start-time').value:'',endTime:type==='Horas extras'?$('#r-end-time').value:'',
+    reason:$('#r-reason')?.value.trim()||'',managerNote:old?.managerNote||'',createdAt:old?.createdAt||nowIso(),updatedAt:nowIso()};
+  if(type==='Férias'&&(!req.startDate||!req.endDate||req.days<=0))return toast('Informe corretamente o período das férias.','err');
+  if(type==='Horas extras'&&(!req.overtimeDate||req.hours<=0||!req.reason))return toast('Informe data, quantidade de horas e justificativa.','err');
+  try{const j=await api('saveRequest',{request:req});applySnapshot(j.snapshot);closeModal();toast('Solicitação enviada para aprovação.','ok');renderPage();}catch(e){}
+}
+async function decideRequest(id,decision){
+  const label=decision==='Aprovada'?'aprovar':'rejeitar';
+  const note=prompt(`Deseja ${label} esta solicitação?\n\nInclua uma observação da gestão (opcional):`,'');
+  if(note===null)return;
+  try{const j=await api('decideRequest',{id,decision,managerNote:note});applySnapshot(j.snapshot);toast(`Solicitação ${decision.toLowerCase()}.`,'ok');renderPage();}catch(e){}
+}
+async function cancelRequest(id){
+  if(!confirm('Cancelar esta solicitação?'))return;
+  try{const j=await api('decideRequest',{id,decision:'Cancelada',managerNote:'Cancelada pelo solicitante.'});applySnapshot(j.snapshot);toast('Solicitação cancelada.','ok');renderPage();}catch(e){}
+}
+
+function renderFeedbacks() {
+  $('#top-title').textContent='Feedbacks & PDI'; $('#top-sub').textContent='Desenvolvimento e acompanhamento';
+  const fb=state.feedbacks.filter(x=>currentRole()==='rh'||x.employee===currentUser()||x.manager===currentUser()||canSeeOwner(x.employee));
+  const pd=state.pdis.filter(x=>currentRole()==='rh'||x.employee===currentUser()||x.manager===currentUser()||canSeeOwner(x.employee));
+  $('#page').innerHTML=pageHead('Feedbacks & PDI','Registros de desenvolvimento vinculados ao colaborador e à gestão.',isLeader()?`<div style="display:flex;gap:8px"><button class="btn btn-outline" onclick="openFeedbackModal()">+ Feedback</button><button class="btn btn-primary" onclick="openPdiModal()">+ PDI</button></div>`:'')+
+  `<div class="grid two"><div class="card"><div class="card-head"><div><h3>Feedbacks</h3><span>${fb.length} registros</span></div></div><div class="card-pad">${fb.length?fb.map(x=>`<div class="alert"><b>${esc(user(x.employee).name)} · ${esc(x.kind||'Feedback')}</b><p>${esc(x.summary||'')}</p><div class="feed-time">${fmtDateTime(x.updatedAt)}</div></div>`).join(''):`<div class="empty">Sem feedbacks.</div>`}</div></div>
+  <div class="card"><div class="card-head"><div><h3>Planos de desenvolvimento</h3><span>${pd.length} registros</span></div></div><div class="card-pad">${pd.length?pd.map(x=>`<div class="alert"><b>${esc(user(x.employee).name)} · ${esc(x.goal||'PDI')}</b><p>${esc(x.actions||'')}</p><div class="feed-time">Status: ${esc(x.status||'Em andamento')} · ${fmtDate(x.dueDate)}</div></div>`).join(''):`<div class="empty">Sem PDIs.</div>`}</div></div></div>`;
+}
+function employeeOptions(selected=''){return (currentRole()==='rh'?Object.keys(state.users).filter(k=>state.users[k].role==='colab'):teamKeys()).map(k=>`<option value="${k}" ${selected===k?'selected':''}>${esc(user(k).name)}</option>`).join('')}
+function openFeedbackModal(){
+  showModal('Novo feedback',`<div class="row"><div class="field"><label>Colaborador</label><select id="f-emp">${employeeOptions()}</select></div><div class="field"><label>Tipo</label><select id="f-kind"><option>Feedback 1:1</option><option>Reconhecimento</option><option>Ponto de melhoria</option><option>Alinhamento</option></select></div></div><div class="field"><label>Resumo</label><textarea id="f-summary"></textarea></div>`,
+  `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveFeedback()">Salvar</button>`);
+}
+async function saveFeedback(){
+  const x={id:uid(),employee:$('#f-emp').value,manager:currentUser(),kind:$('#f-kind').value,summary:$('#f-summary').value.trim(),createdAt:nowIso(),updatedAt:nowIso()};
+  try{const j=await api('saveFeedback',{feedback:x});applySnapshot(j.snapshot);closeModal();toast('Feedback registrado.','ok');renderPage();}catch(e){}
+}
+function openPdiModal(){
+  showModal('Novo PDI',`<div class="field"><label>Colaborador</label><select id="p-emp">${employeeOptions()}</select></div><div class="field"><label>Objetivo de desenvolvimento</label><input id="p-goal"></div><div class="field"><label>Ações</label><textarea id="p-actions"></textarea></div><div class="row"><div class="field"><label>Prazo</label><input id="p-due" type="date"></div><div class="field"><label>Status</label><select id="p-status"><option>Em andamento</option><option>Aguardando</option><option>Concluída</option></select></div></div>`,
+  `<button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="savePdi()">Salvar</button>`);
+}
+async function savePdi(){
+  const x={id:uid(),employee:$('#p-emp').value,manager:currentUser(),goal:$('#p-goal').value.trim(),actions:$('#p-actions').value.trim(),dueDate:$('#p-due').value,status:$('#p-status').value,createdAt:nowIso(),updatedAt:nowIso()};
+  try{const j=await api('savePdi',{pdi:x});applySnapshot(j.snapshot);closeModal();toast('PDI registrado.','ok');renderPage();}catch(e){}
+}
+
+
+let __userPhotoData='', __userPhotoRemove=false;
+
+function peopleKeys(){
+  let keys=currentRole()==='rh'?Object.keys(state.users):visibleKeys();
+  if(currentRole()!=='rh') keys=keys.filter(k=>state.users[k]?.active!==false);
+  if(currentRole()==='rh'&&state.peopleFilter==='active') keys=keys.filter(k=>state.users[k]?.active!==false);
+  if(currentRole()==='rh'&&state.peopleFilter==='inactive') keys=keys.filter(k=>state.users[k]?.active===false);
+  return keys.sort((a,b)=>String(user(a).name).localeCompare(String(user(b).name),'pt-BR'));
+}
+function renderPeople() {
+  $('#top-title').textContent='Pessoas'; $('#top-sub').textContent='Cadastro e ficha dos colaboradores';
+  const keys=peopleKeys();
+  const controls=currentRole()==='rh'
+    ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><select onchange="state.peopleFilter=this.value;renderPeople()"><option value="active" ${state.peopleFilter==='active'?'selected':''}>Ativos</option><option value="inactive" ${state.peopleFilter==='inactive'?'selected':''}>Inativos</option><option value="all" ${state.peopleFilter==='all'?'selected':''}>Todos</option></select><button class="btn btn-primary" onclick="openUserModal()">+ Novo colaborador</button></div>`
+    : '';
+  $('#page').innerHTML=pageHead('Pessoas','Consulte a ficha, estrutura, contato e indicadores de cada colaborador.',controls)+
+  `<div class="user-grid">${keys.map(k=>{const u=user(k),ts=state.tasks.filter(t=>t.owner===k),open=ts.filter(t=>t.status!=='Concluída').length;return `<div class="user-card ${u.active===false?'user-inactive':''}">
+    <div class="user-card-top">${avatar(k,true)}<div style="min-width:0"><h4>${esc(u.name)}</h4><p>${esc(u.title||u.role)}</p><div class="small muted">${esc(u.team||u.company||'')}</div></div></div>
+    <div class="meta"><div class="meta-box"><b>${open}</b><span>Atividades abertas</span></div><div class="meta-box"><b>${u.active===false?'Inativo':'Ativo'}</b><span>Status cadastral</span></div></div>
+    <div class="user-card-actions"><button class="btn btn-soft btn-sm" onclick="openEmployeeRecord('${k}')">Ver ficha</button>${currentRole()==='rh'?`<button class="btn btn-outline btn-sm" onclick="openUserModal('${k}')">Editar</button>`:''}</div>
+  </div>`}).join('')}</div>`;
+}
+function employeeRecordStats(key){
+  const ts=state.tasks.filter(t=>t.owner===key),open=ts.filter(t=>t.status!=='Concluída'),done=ts.filter(t=>t.status==='Concluída');
+  return {all:ts.length,open:open.length,done:done.length,overdue:open.filter(isOverdue).length,blocked:open.filter(t=>t.status==='Bloqueada').length};
+}
+function detailLine(label,value){return `<div class="record-line"><span>${esc(label)}</span><b>${esc(value||'—')}</b></div>`}
+function openEmployeeRecord(key){
+  const u=user(key),s=employeeRecordStats(key);
+  const recent=state.tasks.filter(t=>t.owner===key).sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0,6);
+  const fb=state.feedbacks.filter(x=>x.employee===key).slice(0,4),pd=state.pdis.filter(x=>x.employee===key).slice(0,4);
+  showModal('Ficha do colaborador',`<div class="record-hero"><div class="record-photo">${avatar(key,true)}</div><div><h2>${esc(u.name)}</h2><p>${esc(u.title||'')}</p><span class="pill ${u.active===false?'blocked':'done'}">${u.active===false?'Inativo':'Ativo'}</span></div></div>
+  <div class="record-kpis"><div><b>${s.open}</b><span>Abertas</span></div><div><b>${s.done}</b><span>Concluídas</span></div><div><b>${s.overdue}</b><span>Vencidas</span></div><div><b>${s.blocked}</b><span>Bloqueadas</span></div></div>
+  <div class="grid two">
+    <div class="record-section"><h4>Dados profissionais</h4>${detailLine('Cargo',u.title)}${detailLine('Equipe / setor',u.team)}${detailLine('Gestor',user(u.manager).name)}${detailLine('Empresa',u.company)}${detailLine('Unidade',u.unit)}${detailLine('Centro de custo',u.costCenter)}${detailLine('Tipo de contrato',u.contractType)}${detailLine('Modelo de trabalho',u.workModel)}${detailLine('Admissão',u.hireDate?fmtDate(u.hireDate):'')}</div>
+    <div class="record-section"><h4>Contato e cadastro</h4>${detailLine('E-mail',u.email)}${detailLine('Telefone',u.phone)}${detailLine('CPF',u.cpf)}${detailLine('Nascimento',u.birthDate?fmtDate(u.birthDate):'')}${detailLine('Login',u.login)}${detailLine('Perfil de acesso',u.role)}${detailLine('Observações',u.notes)}</div>
+  </div>
+  <div class="record-section" style="margin-top:14px"><h4>Atividades recentes</h4>${recent.length?recent.map(t=>`<div class="record-task"><div><b>${esc(t.title)}</b><span>${esc(t.status)} · prazo ${fmtDate(t.dueDate)}</span></div><button class="link-btn" onclick="closeModal();openTaskModal('${t.id}')">Abrir</button></div>`).join(''):'<div class="muted small">Nenhuma atividade registrada.</div>'}</div>
+  <div class="grid two" style="margin-top:14px"><div class="record-section"><h4>Feedbacks</h4>${fb.length?fb.map(x=>`<div class="small" style="padding:7px 0;border-bottom:1px solid var(--line)"><b>${esc(x.kind)}</b><br><span class="muted">${esc(x.summary)}</span></div>`).join(''):'<span class="muted small">Sem registros.</span>'}</div><div class="record-section"><h4>PDIs</h4>${pd.length?pd.map(x=>`<div class="small" style="padding:7px 0;border-bottom:1px solid var(--line)"><b>${esc(x.goal)}</b><br><span class="muted">${esc(x.status)} · ${fmtDate(x.dueDate)}</span></div>`).join(''):'<span class="muted small">Sem registros.</span>'}</div></div>`,
+  `${currentRole()==='rh'?`<button class="btn btn-outline" onclick="closeModal();openUserModal('${key}')">Editar cadastro</button><button class="btn btn-soft" onclick="resetUserPassword('${key}')">Redefinir senha</button>`:''}<button class="btn btn-primary" onclick="closeModal()">Fechar</button>`,true);
+}
+function userManagerOptions(selected=''){
+  return Object.keys(state.users).filter(k=>state.users[k].role==='gestor'&&state.users[k].active!==false).map(k=>`<option value="${k}" ${selected===k?'selected':''}>${esc(user(k).name)}</option>`).join('');
+}
+function openUserModal(key='') {
+  if(currentRole()!=='rh')return toast('Somente o RH pode alterar cadastros.','err');
+  const isEdit=!!key,u=key?user(key):{name:'',login:'',role:'colab',manager:'',title:'',team:'',email:'',phone:'',cpf:'',birthDate:'',hireDate:'',company:'',unit:'',costCenter:'',contractType:'CLT',workModel:'Presencial',notes:'',active:true,photoUrl:''};
+  __userPhotoData='';__userPhotoRemove=false;
+  showModal(isEdit?'Editar colaborador':'Novo colaborador',`<div class="photo-editor"><div id="u-photo-preview">${key?avatar(key,true):'<span class="avatar lg">+</span>'}</div><div><label class="btn btn-soft btn-sm">Escolher foto<input id="u-photo" type="file" accept="image/*" hidden onchange="prepareUserPhoto(this.files[0])"></label>${u.photoUrl?'<button class="btn btn-outline btn-sm" onclick="removeUserPhoto()">Remover foto</button>':''}<div class="small muted" style="margin-top:6px">JPG/PNG · a imagem será reduzida antes do envio.</div></div></div>
+  <div class="row"><div class="field"><label>Nome completo *</label><input id="u-name" value="${esc(u.name)}"></div><div class="field"><label>Login *</label><input id="u-login" value="${esc(u.login||'')}" placeholder="nome.sobrenome"></div></div>
+  <div class="row"><div class="field"><label>Perfil de acesso</label><select id="u-role">${[['colab','Colaborador'],['gestor','Gestor'],['rh','RH / Gerência']].map(([v,l])=>`<option value="${v}" ${u.role===v?'selected':''}>${l}</option>`).join('')}</select></div><div class="field"><label>Gestor</label><select id="u-manager"><option value="">Sem gestor</option>${userManagerOptions(u.manager)}</select></div><div class="field"><label>Status</label><select id="u-active"><option value="true" ${u.active!==false?'selected':''}>Ativo</option><option value="false" ${u.active===false?'selected':''}>Inativo</option></select></div></div>
+  <div class="row"><div class="field"><label>Cargo</label><input id="u-title" value="${esc(u.title)}"></div><div class="field"><label>Equipe / setor</label><input id="u-team" value="${esc(u.team)}"></div></div>
+  <div class="row"><div class="field"><label>E-mail</label><input id="u-email" type="email" value="${esc(u.email)}"></div><div class="field"><label>Telefone</label><input id="u-phone" value="${esc(u.phone)}"></div><div class="field"><label>CPF</label><input id="u-cpf" value="${esc(u.cpf)}"></div></div>
+  <div class="row"><div class="field"><label>Data de nascimento</label><input id="u-birth" type="date" value="${esc(u.birthDate)}"></div><div class="field"><label>Data de admissão</label><input id="u-hire" type="date" value="${esc(u.hireDate)}"></div></div>
+  <div class="row"><div class="field"><label>Empresa</label><input id="u-company" value="${esc(u.company)}"></div><div class="field"><label>Unidade</label><input id="u-unit" value="${esc(u.unit)}"></div><div class="field"><label>Centro de custo</label><input id="u-cc" value="${esc(u.costCenter)}"></div></div>
+  <div class="row"><div class="field"><label>Tipo de contrato</label><select id="u-contract">${['CLT','PJ','Estágio','Aprendiz','Temporário','Outro'].map(v=>`<option ${u.contractType===v?'selected':''}>${v}</option>`).join('')}</select></div><div class="field"><label>Modelo de trabalho</label><select id="u-work">${['Presencial','Híbrido','Remoto','Outro'].map(v=>`<option ${u.workModel===v?'selected':''}>${v}</option>`).join('')}</select></div></div>
+  <div class="field"><label>Observações</label><textarea id="u-notes">${esc(u.notes)}</textarea></div>
+  ${!isEdit?'<div class="small muted">O servidor criará uma senha temporária forte e exigirá troca no primeiro acesso.</div>':''}`,
+  `${isEdit?`<button class="btn btn-danger" style="margin-right:auto" onclick="deactivateUser('${key}')">${u.active===false?'Manter histórico':'Inativar cadastro'}</button>`:''}<button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveUser('${key}')">${isEdit?'Salvar alterações':'Criar colaborador'}</button>`,true);
+}
+async function prepareUserPhoto(file){
+  if(!file)return;
+  if(!file.type.startsWith('image/'))return toast('Selecione uma imagem válida.','err');
+  if(file.size>8*1024*1024)return toast('A foto original deve ter no máximo 8 MB.','err');
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const size=512,canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');canvas.width=size;canvas.height=size;
+      const scale=Math.max(size/img.width,size/img.height),w=img.width*scale,h=img.height*scale;
+      ctx.drawImage(img,(size-w)/2,(size-h)/2,w,h);
+      __userPhotoData=canvas.toDataURL('image/jpeg',.82);__userPhotoRemove=false;
+      $('#u-photo-preview').innerHTML=`<span class="avatar lg avatar-photo"><img src="${__userPhotoData}" alt="Prévia"></span>`;
+    };img.src=reader.result;
+  };reader.readAsDataURL(file);
+}
+function removeUserPhoto(){__userPhotoData='';__userPhotoRemove=true;$('#u-photo-preview').innerHTML='<span class="avatar lg">+</span>';}
+function collectUserForm(){
+  return {name:$('#u-name').value.trim(),login:$('#u-login').value.trim().toLowerCase(),role:$('#u-role').value,manager:$('#u-manager').value,active:$('#u-active').value==='true',
+    title:$('#u-title').value.trim(),team:$('#u-team').value.trim(),email:$('#u-email').value.trim(),phone:$('#u-phone').value.trim(),cpf:$('#u-cpf').value.trim(),
+    birthDate:$('#u-birth').value,hireDate:$('#u-hire').value,company:$('#u-company').value.trim(),unit:$('#u-unit').value.trim(),costCenter:$('#u-cc').value.trim(),
+    contractType:$('#u-contract').value,workModel:$('#u-work').value,notes:$('#u-notes').value.trim(),photoData:__userPhotoData,removePhoto:__userPhotoRemove};
+}
+async function saveUser(key=''){
+  const payload=collectUserForm();if(!payload.name||!payload.login)return toast('Informe nome e login.','err');
+  try{
+    const j=await api(key?'updateUser':'createUser',key?{userKey:key,user:payload}:{user:payload});
+    applySnapshot(j.snapshot);closeModal();
+    if(j.credentials)showSecret('Usuário criado',`Login: ${j.credentials.login}\nSenha temporária: ${j.credentials.password}\n\nEnvie por canal seguro. A troca será obrigatória no primeiro acesso.`);
+    else toast('Cadastro atualizado.','ok');
+    renderPage();
+  }catch(e){}
+}
+async function deactivateUser(key){
+  const u=user(key);if(u.active===false)return closeModal();
+  if(!confirm('Inativar '+u.name+'? O histórico será preservado e o login será bloqueado.'))return;
+  try{const j=await api('deleteUser',{userKey:key});applySnapshot(j.snapshot);closeModal();toast('Cadastro inativado com histórico preservado.','ok');renderPage();}catch(e){}
+}
+async function resetUserPassword(key) {
+  if(currentRole()!=='rh')return toast('Somente o RH pode redefinir senhas.','err');
+  if(!confirm('Gerar nova senha temporária para '+user(key).name+'?'))return;
+  try{const j=await api('resetUserPassword',{userKey:key});showSecret('Senha redefinida',`Login: ${j.credentials.login}\nSenha temporária: ${j.credentials.password}`);}catch(e){}
+}
+
+function renderAudit() {
+  $('#top-title').textContent='Auditoria'; $('#top-sub').textContent='Rastreabilidade das movimentações';
+  const rows=state.audit.slice(0,300);
+  $('#page').innerHTML=pageHead('Auditoria','Histórico técnico de gravações, alterações e acessos.')+`<div class="card"><div style="overflow:auto"><table class="audit-table"><thead><tr><th>Data/hora</th><th>Usuário</th><th>Ação</th><th>Detalhe</th><th>Versão</th></tr></thead><tbody>${rows.map(a=>`<tr><td>${fmtDateTime(a.createdAt||a.date)}</td><td>${esc(user(a.user).name||a.user)}</td><td>${esc(a.action)}</td><td>${esc(a.detail)}</td><td>${esc(a.version||'')}</td></tr>`).join('')}</tbody></table></div></div>`;
+}
+
+function renderSettings() {
+  $('#top-title').textContent='Configurações'; $('#top-sub').textContent='Servidor e segurança';
+  $('#page').innerHTML=pageHead('Configurações','O servidor é global e já vem configurado para todos os usuários.')+
+  `<div class="grid two"><div class="card"><div class="card-head"><div><h3>Servidor central</h3><span>Google Apps Script Web App</span></div></div><div class="card-pad"><div class="field"><label>URL global /exec</label><input value="${esc(APP_CONFIG.DEFAULT_API_URL)}" readonly></div><div style="display:flex;gap:8px"><button class="btn btn-primary" onclick="testGlobalServer()">Testar conexão</button><button class="btn btn-outline" onclick="pollNow(true)">Sincronizar agora</button></div><div id="server-test-result" class="small muted" style="margin-top:12px">Esta URL é usada automaticamente por todos os logins e novos usuários.</div></div></div>
+  <div class="card"><div class="card-head"><div><h3>Segurança</h3><span>Sessão e senha</span></div></div><div class="card-pad"><button class="btn btn-outline" onclick="openChangePassword()">Alterar minha senha</button><p class="small muted">As senhas ficam somente no servidor, armazenadas como hash com salt. O HTML não contém senhas.</p></div></div></div>`;
+}
+async function testGlobalServer(){
+  const out=$('#server-test-result');if(out)out.innerHTML='Testando conexão…';
+  try{const j=await api('health',{},true);setServerState('online',j.backend||'Servidor online');if(out)out.innerHTML=`<span style="color:var(--green);font-weight:800">✓ Conexão realizada com sucesso</span><br>Servidor: ${esc(j.backend||'RH V6 Integrado')} · Versão: ${esc(j.version||0)} · ${new Date().toLocaleString('pt-BR')}`;toast('Conexão com o servidor confirmada.','ok');}
+  catch(e){if(out)out.innerHTML=`<span style="color:var(--red);font-weight:800">Falha na conexão:</span> ${esc(e.message)}`;}
+}
+
+function renderPage() {
+  if(!state.session)return;
+  if(state.page==='dashboard')renderDashboard();
+  else if(state.page==='tasks')renderTasks();
+  else if(state.page==='team')renderTeam();
+  else if(state.page==='requests')renderRequests();
+  else if(state.page==='feedbacks')renderFeedbacks();
+  else if(state.page==='people')renderPeople();
+  else if(state.page==='audit')renderAudit();
+  else renderSettings();
+}
+
+function updateNotifBadge() {
+  const n=state.notifications.filter(x=>!x.read).length,el=$('#notif-count'); if(!el)return; el.textContent=n>99?'99+':n; el.classList.toggle('hidden',!n);
+}
+function toggleNotifications() {
+  let d=$('#notif-drawer');
+  if(d.innerHTML){d.innerHTML='';return;}
+  const rows=state.notifications.slice(0,80);
+  d.innerHTML=`<div class="notif-drawer"><div class="notif-head"><b>Notificações</b><button class="link-btn" onclick="markNotificationsRead()">Marcar todas como lidas</button></div>${rows.length?rows.map(n=>`<div class="notif-item ${n.read?'':'unread'}"><span class="notif-bullet"></span><div><b>${esc(n.title)}</b><p>${esc(n.message)}</p><time>${fmtDateTime(n.createdAt)}</time></div></div>`).join(''):`<div class="empty">Sem notificações.</div>`}</div>`;
+}
+async function markNotificationsRead() {
+  try{const j=await api('markNotificationsRead',{},true);applySnapshot(j.snapshot);$('#notif-drawer').innerHTML='';updateNotifBadge();}catch(e){}
+}
+
+function showModal(title,body,foot='',wide=false) {
+  $('#modal-root').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal ${wide?'wide':''}"><div class="modal-head"><h3>${esc(title)}</h3><button class="modal-close" onclick="closeModal()">×</button></div><div class="modal-body">${body}</div><div class="modal-foot">${foot}</div></div></div>`;
+}
+function closeModal(){ const r=$('#modal-root'); if(r)r.innerHTML=''; }
+function showSecret(title,text){showModal(title,`<div class="field"><label>Credencial temporária</label><textarea class="mono" id="secret-text" readonly>${esc(text)}</textarea></div><div class="small muted">Não publique esta senha no GitHub.</div>`,`<button class="btn btn-outline" onclick="navigator.clipboard.writeText($('#secret-text').value);toast('Copiado.','ok')">Copiar</button><button class="btn btn-primary" onclick="closeModal()">Fechar</button>`)}
+
+function openChangePassword(force=false) {
+  showModal(force?'Defina uma nova senha':'Alterar senha',`<div class="field"><label>Nova senha</label><input id="cp1" type="password" placeholder="Mínimo 10 caracteres"></div><div class="field"><label>Confirmar</label><input id="cp2" type="password"></div><div class="small muted">Use letras maiúsculas, minúsculas, número e caractere especial.</div>`,
+  `<button class="btn btn-primary" onclick="changePassword(${force?'true':'false'})">Salvar nova senha</button>`);
+}
+async function changePassword(force=false) {
+  const a=$('#cp1').value,b=$('#cp2').value;if(a!==b)return toast('As senhas não conferem.','err');if(a.length<10)return toast('Use pelo menos 10 caracteres.','err');
+  try{const j=await api('changePassword',{password:a});state.session.forceReset=false;closeModal();toast('Senha alterada.','ok');}catch(e){}
+}
+
+async function login() {
+  const username=$('#login-user').value.trim(),password=$('#login-pass').value; const err=$('#login-error'); err.textContent='';
+  if(!username||!password){err.textContent='Informe usuário e senha.';return;}
+  try {
+    const j=await api('login',{username,password},true);
+    sessionStorage.setItem(APP_CONFIG.TOKEN_KEY,j.token);
+    state.session={userKey:j.userKey,role:j.role,forceReset:!!j.forceReset};
+    await bootstrap();
+    renderShell();
+    if(j.forceReset)setTimeout(()=>openChangePassword(true),250);
+  } catch(e) { err.textContent=e.message; }
+}
+async function bootstrap() {
+  const j=await api('bootstrap',{},true); applySnapshot(j.snapshot); state.session={...state.session,...j.session};
+}
+function logout() {
+  const tk=token(); sessionStorage.removeItem(APP_CONFIG.TOKEN_KEY); state.session=null; if(state.poll)clearInterval(state.poll);
+  if(tk)api('logout',{},true).catch(()=>{});
+  renderLogin();
+}
+function renderLogin() {
+  document.body.innerHTML=`<div id="app"><div class="login-page"><section class="login-hero">
+    <div class="brand-lockup">
+      <div class="brand-title" style="font-size:44px;margin-top:0">Gestão de Pessoas</div>
+      <div style="font-size:22px;font-weight:800;margin-top:10px">Financeiro Central</div>
+      <div style="width:108px;height:5px;background:#fff;border-radius:999px;margin:36px 0 38px"></div>
+      <div style="font-size:31px;line-height:1.18;font-weight:600;max-width:560px">
+        Grandes conquistas nascem do<br>
+        <strong style="display:inline-block;margin-top:10px;font-size:40px;line-height:1.05">trabalho em equipe</strong>
+      </div>
+    </div>
+    <div class="crisdu-login-logo" style="font-size:30px;font-weight:950;line-height:.9;letter-spacing:-1px">
+      GRUPO<br>CRISDU
+    </div>
+  </section>
+  <section class="login-side"><div class="login-card"><div class="login-logo"><div class="logo-mark">RH</div><div><b>Gestão de Pessoas</b><div class="small muted">Financeiro Central · V5 Integrado</div></div></div><h1>Bem-vindo(a)</h1><p class="lead">Acesse sua conta para continuar.</p><div class="field"><label>Usuário</label><input id="login-user" autocomplete="username" placeholder="Ex.: leticia.medeiros"></div><div class="field"><label>Senha</label><input id="login-pass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()"></div><div id="login-error" class="login-error"></div><div class="login-actions"><button class="btn btn-primary" onclick="login()">Entrar</button></div><div class="server-line"><div class="small"><span class="status-dot" id="login-dot"></span><span id="login-server">Servidor</span></div><button class="btn btn-outline btn-sm" onclick="testServerLogin()">Testar conexão</button></div></div></section></div><div class="toast-zone" id="toast-zone"></div></div>`;
+  setTimeout(testServerLogin,250);
+}
+async function testServerLogin() {
+  const dot=$('#login-dot'),txt=$('#login-server'); try{const j=await api('health',{},true);if(dot)dot.className='status-dot online';if(txt)txt.textContent=(j.backend||'Servidor online');}catch(e){if(dot)dot.className='status-dot error';if(txt)txt.textContent='Servidor indisponível';}
+}
+
+function applySnapshot(s) {
+  if(!s)return;
+  const oldUnread=new Set(state.notifications.filter(n=>!n.read).map(n=>n.id));
+  if(s.users){state.users=Object.keys(s.users).length?s.users:{...STATIC_USERS};}
+  state.tasks=s.tasks||[]; state.requests=s.requests||[]; state.feedbacks=s.feedbacks||[]; state.pdis=s.pdis||[]; state.events=(s.events||[]).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+  state.notifications=(s.notifications||[]).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))); state.audit=(s.audit||[]).sort((a,b)=>String(b.createdAt||b.date).localeCompare(String(a.createdAt||a.date)));
+  state.version=Number(s.version||state.version||0);
+  const fresh=state.notifications.filter(n=>!n.read&&!oldUnread.has(n.id));
+  if(fresh.length&&oldUnread.size)toast(fresh[0].title+': '+fresh[0].message);
+  updateNotifBadge();
+}
+async function pollNow(force=false) {
+  if(!state.session||state.syncing)return;
+  state.syncing=true;
+  try{const j=await api('changes',{version:force?0:state.version},true);if(j&&j.changed&&j.snapshot){applySnapshot(j.snapshot);renderPage();}}catch(e){}finally{state.syncing=false;}
+}
+function startPolling() {
+  if(state.poll)clearInterval(state.poll);
+  state.poll=setInterval(()=>pollNow(false),APP_CONFIG.POLL_MS);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)pollNow(false)});
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();const d=$('#notif-drawer');if(d)d.innerHTML='';}});
+
+renderLogin();
+
+</script>
+</body>
+</html>
